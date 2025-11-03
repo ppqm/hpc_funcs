@@ -1,0 +1,8 @@
+jinja2
+mypy
+numpy
+pandas
+pip
+pre-commit
+pytest
+tdqm

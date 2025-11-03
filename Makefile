@@ -1,49 +1,109 @@
+.PHONY: update-format format test test-dist build types upload cov
 
-conda=conda
-python=python
-pip=./env/bin/pip
-module=hpce_utils
+package=hpce_utils
+version_file1=./src/hpce_utils/version.py
 
-.PHONY: build check clean test
+VERSION=$(shell cat ${version_file1} | egrep -o "([0-9]{1,}\.)+[0-9]{1,}")
+VERSION_PATCH=$(shell echo ${VERSION} | cut -d'.' -f3)
+VERSION_MINOR=$(shell echo ${VERSION} | cut -d'.' -f2)
+VERSION_MAJOR=$(shell echo ${VERSION} | cut -d'.' -f1)
+GIT_COMMIT=$(shell git rev-parse --short HEAD)
 
-all: env dev-pip
+env=env
+python=${env}/bin/python
+pytest=${env}/bin/pytest
 
-todo:
-	grep "# TODO" */*.py | sed -e 's/    //g' | sed -e 's/# TODO//'
+all: env
 
-env:
-	mamba env create -f environment.yml -p ./env --quiet
+## Setup
 
-dev-pip:
-	${pip} install -e .
+env: ${env}_uv
 
-conda-install-build:
-	${conda} install conda-build -c conda-forge -y
-
-setup-pre-commit:
+env_uv:
+	uv venv ${env}
+	uv pip install -r requirements.txt --python ${env}/bin/python
+	uv pip install -e . --python ${env}/bin/python
 	${python} -m pre_commit install
 
-pre-commit-all:
+env_conda:
+	conda env create -f ./environment.yml -p ${env} --quiet
+	${python} -m pre_commit install
+	${python} -m pip install -e .
+
+
+## Development
+
+update-format:
+	${python} -m pre_commit autoupdate
+
+format:
 	${python} -m pre_commit run --all-files
 
-format: pre-commit-all
+test:
+	${python} -m pytest ./tests
 
-test: test-unit
-
-test-unit:
-	${python} -m pytest --basetemp=".pytest" -vrs tests/
-
-# test-ipynb:
-# 	jupytext --output _tmp_script.py notebooks/example_demo.ipynb
-# 	${python} _tmp_script.py
+test-dist:
+	${python} -m twine check dist/*
 
 types:
-	@# Slow and will agressively put types (old format) in the code
-	python -m monkeytype run `which pytest` ./tests/
-	python -m monkeytype list-modules | grep ${module} | xargs -n1 monkeytype apply
+	${python} -m monkeytype run $$(which ${pytest}) ./tests
+	${python} -m monkeytype list-modules | grep ${package} | parallel -j1 "${python} -m monkeytype apply {} > /dev/null && echo {}"
+
+cov:
+	${python} -m pytest --cov=${package} --cov-config .coveragerc --cov-report html tests
+
+build:
+	${python} -m build --skip-dependency-check  .
+
+upload:
+	${python} -m twine upload ./dist/*
+
+start-jupyter:
+	${python} -m jupyterlab
+
+## Version
+
+version:
+	echo ${VERSION}
+
+bump-version-dev:
+	test ! -z "${VERSION}"
+	test ! -z "${GIT_COMMIT}"
+	exit 1 # Not Implemented
+
+bump-version-patch:
+	test ! -z "${VERSION_PATCH}"
+	make set-version VERSION=${VERSION_MAJOR}.${VERSION_MINOR}.$(shell awk 'BEGIN{print ${VERSION_PATCH}+1}')
+
+bump-version-minor:
+	test ! -z "${VERSION_MINOR}"
+	make set-version VERSION=${VERSION_MAJOR}.$(shell awk 'BEGIN{print ${VERSION_MINOR}+1}').0
+
+bump-version-major:
+	test ! -z "${VERSION_MAJOR}"
+	make set-version VERSION=$(shell awk 'BEGIN{print ${VERSION_MAJOR}+1}').0.0
+
+set-version:
+	test ! -z "${VERSION}"
+	sed -i 's/\(^\|.*:\)__version__ = .*/__version__ = "${VERSION}"/' ${version_file1}
+
+commit-tag-version:
+	@# git tag --list | grep -qix "${VERSION}"
+	git commit -m "Version ${VERSION}" --no-verify ${version_file1}
+	git tag '${package}-${VERSION}'
+
+## Github
+
+
+## Clean
 
 clean:
-	rm -r build *.pyc __pycache__ _tmp_* *.egg-info
-
-clean_env:
-	rm -fr ./env
+	find ./src/ -type f \
+		-name "*.so" \
+		-name "*.pyc" \
+		-name ".pyo" \
+		-delete
+	rm -rf ./src/*.egg-info/
+	rm -rf *.whl
+	rm -rf ./build/ ./__pycache__/
+	rm -rf ./dist/

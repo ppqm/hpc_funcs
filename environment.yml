@@ -4,12 +4,5 @@ channels:
 - conda-forge
 dependencies:
 - python=3.11
-- jinja2
-- mypy
-- numpy
-- pandas
-- pip
-- pre-commit
-- pytest
 - pip:
-  - tdqm
+  - -r ./requirements.txt
