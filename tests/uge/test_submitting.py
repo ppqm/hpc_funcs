@@ -1,0 +1,119 @@
+from pathlib import Path
+
+from hpc_funcs.schedulers.uge.monitoring import wait_for_jobs
+from hpc_funcs.schedulers.uge.submission import (
+    generate_single_script,
+    generate_taskarray_script,
+    read_logfiles,
+    submit_script,
+)
+
+
+def test_generate_submit_script():
+    command = "which python"
+    script: str = generate_taskarray_script(command)
+    print(script)
+    assert command in script
+
+
+def test_single(global_tmp_path: Path):
+    """Create a single job"""
+
+    # Need network accessible folder
+    tmp_path = global_tmp_path
+
+    # Generate bash script
+    success_string = "finished work"
+    command = f"echo 'before'\nsleep 20\n\necho '{success_string}'"
+    log_dir = tmp_path / "uge_testlogs"
+
+    script: str = generate_single_script(
+        command,
+        cores=1,
+        cwd=tmp_path,
+        log_dir=log_dir,
+        name="TestJob",
+    )
+    print(script)
+    assert command in script
+
+    # Submit UGE job
+    print("scratch:", tmp_path)
+    job_id, _ = submit_script(script, scr=tmp_path)
+    print(job_id)
+    assert job_id is not None
+
+    # Wait
+    finished_job_id: str | None = None
+
+    for fjob_id in wait_for_jobs([job_id], respiratory=5):
+        print(f"job {fjob_id} finished")
+        finished_job_id = fjob_id
+
+    assert finished_job_id is not None
+
+    stdout, stderr = read_logfiles(log_dir, finished_job_id, ignore_stdout=False, filter_lmod=True)
+
+    assert log_dir.is_dir(), "Something wrong with the network drive"
+    print(log_dir)
+
+    print(stdout)
+    print(stderr)
+
+    assert len(stdout) == 1
+    assert len(stderr) == 0
+
+    # Parse output
+    for _, lines in stdout.items():
+        assert success_string in lines
+
+
+def test_taskarray(global_tmp_path: Path):
+    """Create a task-array job"""
+
+    # Need network accessible folder
+    tmp_path = global_tmp_path
+
+    # Generate bash script
+    success_string = "finished work"
+    command = f"sleep 5 & echo '{success_string}'"
+    log_dir = tmp_path / "uge_testlogs"
+
+    script: str = generate_taskarray_script(
+        command,
+        cores=1,
+        cwd=tmp_path,
+        log_dir=log_dir,
+        name="TestJob",
+        task_concurrent=1,
+        task_stop=2,
+    )
+    print(script)
+    assert command in script
+
+    # Submit UGE job
+    print("scratch:", tmp_path)
+    job_id, _ = submit_script(script, scr=tmp_path)
+    print(job_id)
+    assert job_id is not None
+
+    # Wait
+    finished_job_id: str | None = None
+
+    for fjob_id in wait_for_jobs([job_id], respiratory=2):
+        print(f"job {fjob_id} finished")
+        finished_job_id = fjob_id
+
+    assert finished_job_id is not None
+
+    stdout, stderr = read_logfiles(log_dir, finished_job_id, ignore_stdout=False, filter_lmod=True)
+
+    print(stdout)
+    print(stderr)
+
+    assert len(stdout) == 2
+    assert len(stderr) == 0
+
+    # Parse output
+    for _, lines in stdout.items():
+        assert success_string in lines

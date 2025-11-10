@@ -7,7 +7,14 @@ Functions that wraps they key functionality of UGE, to get queue info and submit
 
 First version should be able to
 
--
+- WaitForJobToFinish
+- WaitForJobToFinish-HoldJob
+- Task Array TDQM
+- Submit task-array
+- get qacctj job information
+- get cluster information
+- delete job
+- failed jobs exit_codes
 
 
 # Overview of UGE commands

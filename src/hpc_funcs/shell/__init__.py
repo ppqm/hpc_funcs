@@ -168,16 +168,3 @@ def execute_with_retry(
                 logger.error("Max retries reached for command %s", cmd)
                 raise exc
             num_retries += 1
-
-
-def get_environment(env_names: List[str]) -> Dict[str, str]:
-    """Get environ variables that matter"""
-    environ = dict()
-
-    for var in env_names:
-        value = os.environ.get(var, None)
-
-        if value:
-            environ[var] = value
-
-    return environ

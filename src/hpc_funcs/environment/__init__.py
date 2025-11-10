@@ -2,7 +2,7 @@ import multiprocessing
 import os
 import shutil
 from pathlib import Path
-from typing import Optional, Union
+from typing import Dict, List, Optional, Union
 
 ENVIRON_CORES = [
     "OMP_NUM_THREADS",
@@ -23,9 +23,6 @@ def get_available_cores() -> int:
         return n_cores
 
     n_cores = multiprocessing.cpu_count()
-
-    if n_cores is None:
-        raise ValueError("Could not find avail. cores")
 
     return n_cores
 
@@ -108,3 +105,16 @@ def is_notebook() -> bool:
             return False  # Other type (?)
     except NameError:
         return False  # Probably standard Python interpreter
+
+
+def get_environment(env_names: List[str]) -> Dict[str, str]:
+    """Get environ variables that matter"""
+    environ = dict()
+
+    for var in env_names:
+        value = os.environ.get(var, None)
+
+        if value:
+            environ[var] = value
+
+    return environ

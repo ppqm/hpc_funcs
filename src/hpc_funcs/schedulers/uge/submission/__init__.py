@@ -11,6 +11,7 @@ from hpce_utils.shell import execute
 
 DEFAULT_LOG_DIR = Path("./ugelogs/")
 TEMPLATE_TASKARRAY = Path(__file__).parent / "templates" / "submit-task-array.jinja"
+TEMPLATE_SINGLE = Path(__file__).parent / "templates" / "submit-normal.jinja"
 TEMPLATE_HOLDING = Path(__file__).parent / "templates" / "submit-holding.jinja"
 logger = logging.getLogger(__name__)
 
@@ -49,6 +50,44 @@ def generate_command(sync: bool = False, export: bool = False) -> str:
 
 
 # pylint: disable=too-many-arguments,too-many-locals,dangerous-default-value
+def generate_single_script(
+    cmd: str,
+    cores: int = 1,
+    cwd: Optional[Path] = None,
+    environ: Dict[str, str] = {},
+    hours: int = 7,
+    mins: Optional[int] = None,
+    log_dir: Optional[Path] = DEFAULT_LOG_DIR,
+    mem: int = 4,
+    name: str = "UGEJob",
+    hold_job_id: Optional[str] = None,
+    user_email: Optional[str] = None,
+    generate_dirs: bool = True,
+) -> str:
+    """
+    Remember:
+      - To set core restrictive env variables
+    """
+
+    if not isinstance(cores, int) or cores < 1:
+        raise ValueError(
+            "Cannot submit with invalid cores set. Needs to be a integer greater than 0."
+        )
+
+    kwargs = locals()
+
+    if generate_dirs:
+        kwargs["log_dir"] = generate_log_dir(log_dir)
+
+    with open(TEMPLATE_SINGLE) as file_:
+        template = Template(file_.read())
+
+    script = template.render(**kwargs)
+
+    return script
+
+
+# pylint: disable=too-many-arguments,too-many-locals,dangerous-default-value
 def generate_taskarray_script(
     cmd: str,
     cores: int = 1,
@@ -68,6 +107,9 @@ def generate_taskarray_script(
     generate_dirs: bool = True,
 ) -> str:
     """
+
+    If task_stop is not set, job will not be submitted as jobarray
+
     Remember:
       - To set core restrictive env variables
     """
@@ -211,22 +253,6 @@ def submit_script(
     return uge_id, scr / filename
 
 
-def delete_job(job_id: Optional[str]) -> None:
-
-    cmd = f"qdel {job_id}"
-    logger.debug(cmd)
-
-    stdout, stderr = execute(cmd)
-    stdout = stdout.strip()
-    stderr = stderr.strip()
-
-    for line in stderr.split("\n"):
-        logger.error(line)
-
-    for line in stdout.split("\n"):
-        logger.error(line)
-
-
 def read_logfiles(
     log_path: Path,
     job_id: str,
@@ -236,6 +262,8 @@ def read_logfiles(
     """Read logfiles produced by UGE task array. Ignore empty log files"""
     logger.debug(f"Looking for finished log files in {log_path}")
     stderr_log_filenames = log_path.glob(f"*.e{job_id}*")
+    stderr_log_filenames = list(stderr_log_filenames)
+
     stderr = dict()
     for filename in stderr_log_filenames:
         if filename.stat().st_size == 0:

@@ -1,5 +1,3 @@
-"""UGE qstat wrapper functions for querying job status."""
-
 import json
 import logging
 import subprocess
@@ -19,25 +17,14 @@ def get_qstat(
     job_ids: Optional[List[Union[str, int]]] = None,
     queues: Optional[List[str]] = None,
     resource_filter: Optional[str] = None,
-    show_full: bool = False,
-    show_extended: bool = False,
-    show_priority: bool = False,
 ) -> pd.DataFrame:
     """Get job status information from UGE using qstat -json.
-
-    This is a comprehensive wrapper around the UGE qstat command that returns
-    job information in a pandas DataFrame format.
 
     Args:
         users: List of usernames to filter jobs by. If None, shows your jobs.
         job_ids: List of specific job IDs to query. If None, queries all jobs.
         queues: List of queue names to filter by.
         resource_filter: Resource filter string in format "attr=val,..." (e.g., "arch=lx-amd64").
-        show_full: Show full output with additional job details.
-        show_extended: Show extended information including job requests.
-        show_priority: Show additional priority information.
-        max_retries: Maximum number of retries for the qstat command.
-        update_interval: Seconds to wait between retries.
 
     Returns:
         DataFrame with job information. Each row represents a job (or task) with columns for
@@ -59,48 +46,31 @@ def get_qstat(
         >>> # Get all running and pending jobs with full details
         >>> df = get_qstat(show_full=True)
     """
-    # Build qstat command
+
     cmd = "qstat -json"
 
-    # Add user filter
-    if users:
-        if len(users) == 1:
-            cmd += f" -u {users[0]}"
-        else:
-            # Multiple users: use comma-separated list
-            user_list = ",".join(users)
-            cmd += f" -u {user_list}"
+    if users is not None and len(users):
+        user_list = ",".join(users)
+        cmd += f" -u {user_list}"
 
-    # Add job ID filter
     if job_ids:
-        # Convert to strings and join
         job_id_list = ",".join(str(jid) for jid in job_ids)
         cmd += f" -j {job_id_list}"
 
-    # Add queue filter
     if queues:
         queue_list = ",".join(queues)
         cmd += f" -q {queue_list}"
 
-    # Add resource filter
     if resource_filter:
         cmd += f" -l {resource_filter}"
 
-    # Add flags for extended information
-    if show_full:
-        cmd += " -f"
-
-    if show_extended:
-        cmd += " -ext"
-
-    if show_priority:
-        cmd += " -pri"
-
     # Execute command
     logger.debug(f"Executing: {cmd}")
-    stdout, stderr = execute(
-        cmd,
-    )
+    stdout, stderr = execute(cmd)
+
+    print(stdout)
+    print()
+    print(stderr)
 
     if stderr:
         logger.warning(f"qstat stderr: {stderr}")
@@ -135,19 +105,22 @@ def get_qstat_job(
         >>> job_info = get_qstat_job(12345)
         >>> print(job_info["job_name"])
         >>> print(job_info["slots"])
+        >>> print(job_info["state"])
     """
-    # Build qstat -j command
-    cmd = f"qstat -j {job_id} -json"
 
-    # Execute command
+    cmd = f"qstat -j {job_id} -json -nenv"
+
     logger.debug(f"Executing: {cmd}")
-    try:
-        stdout, stderr = execute(cmd)
-    except subprocess.CalledProcessError as exc:
-        if exc.returncode == 1 and "do not exist" in exc.stderr:
-            logger.info(f"Job {job_id} not found in qstat")
-            return {}
-        raise exc
+
+    process = subprocess.run(
+        cmd,
+        encoding="utf-8",
+        capture_output=True,
+        shell=True,
+    )
+
+    stdout = process.stdout
+    stderr = process.stderr
 
     if stderr:
         logger.warning(f"qstat stderr: {stderr}")
@@ -158,6 +131,9 @@ def get_qstat_job(
     except json.JSONDecodeError as exc:
         logger.error(f"Failed to parse qstat JSON output: {stdout[:500]}")
         raise exc
+
+    # If no jobs found, qstat returns
+    # {"unknown jobs":["29878954"]}
 
     # Extract job info (should be first item in job_info list)
     if "job_info" in data and len(data["job_info"]) > 0:
