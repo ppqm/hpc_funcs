@@ -1,0 +1,322 @@
+"""UGE qstat wrapper functions for querying job status."""
+
+import json
+import logging
+import subprocess
+from typing import Any, Dict, List, Optional, Union
+
+import pandas as pd
+
+from hpc_funcs.shell import execute
+
+from .constants import TAGS_PENDING, TAGS_RUNNING
+
+logger = logging.getLogger(__name__)
+
+
+def get_qstat(
+    users: Optional[List[str]] = None,
+    job_ids: Optional[List[Union[str, int]]] = None,
+    queues: Optional[List[str]] = None,
+    resource_filter: Optional[str] = None,
+    show_full: bool = False,
+    show_extended: bool = False,
+    show_priority: bool = False,
+) -> pd.DataFrame:
+    """Get job status information from UGE using qstat -json.
+
+    This is a comprehensive wrapper around the UGE qstat command that returns
+    job information in a pandas DataFrame format.
+
+    Args:
+        users: List of usernames to filter jobs by. If None, shows your jobs.
+        job_ids: List of specific job IDs to query. If None, queries all jobs.
+        queues: List of queue names to filter by.
+        resource_filter: Resource filter string in format "attr=val,..." (e.g., "arch=lx-amd64").
+        show_full: Show full output with additional job details.
+        show_extended: Show extended information including job requests.
+        show_priority: Show additional priority information.
+        max_retries: Maximum number of retries for the qstat command.
+        update_interval: Seconds to wait between retries.
+
+    Returns:
+        DataFrame with job information. Each row represents a job (or task) with columns for
+        job properties, state, owner, queue, slots, etc.
+
+    Raises:
+        json.JSONDecodeError: If the JSON output from qstat is malformed.
+
+    Examples:
+        >>> # Get all jobs for current user
+        >>> df = get_qstat(users=["testuser1"])
+
+        >>> # Get specific jobs
+        >>> df = get_qstat(job_ids=[12345, 12346])
+
+        >>> # Get jobs in specific queues
+        >>> df = get_qstat(queues=["gpu.q", "default.q"])
+
+        >>> # Get all running and pending jobs with full details
+        >>> df = get_qstat(show_full=True)
+    """
+    # Build qstat command
+    cmd = "qstat -json"
+
+    # Add user filter
+    if users:
+        if len(users) == 1:
+            cmd += f" -u {users[0]}"
+        else:
+            # Multiple users: use comma-separated list
+            user_list = ",".join(users)
+            cmd += f" -u {user_list}"
+
+    # Add job ID filter
+    if job_ids:
+        # Convert to strings and join
+        job_id_list = ",".join(str(jid) for jid in job_ids)
+        cmd += f" -j {job_id_list}"
+
+    # Add queue filter
+    if queues:
+        queue_list = ",".join(queues)
+        cmd += f" -q {queue_list}"
+
+    # Add resource filter
+    if resource_filter:
+        cmd += f" -l {resource_filter}"
+
+    # Add flags for extended information
+    if show_full:
+        cmd += " -f"
+
+    if show_extended:
+        cmd += " -ext"
+
+    if show_priority:
+        cmd += " -pri"
+
+    # Execute command
+    logger.debug(f"Executing: {cmd}")
+    stdout, stderr = execute(
+        cmd,
+    )
+
+    if stderr:
+        logger.warning(f"qstat stderr: {stderr}")
+
+    # Convert to DataFrame
+    df = parse_joblist_json(stdout)
+
+    return df
+
+
+def get_qstat_job(
+    job_id: Union[str, int],
+) -> Dict[str, Any]:
+    """Get detailed information for a specific job using qstat -j -json.
+
+    This returns comprehensive information about a single job, including
+    resource requests, environment, submission details, and task status.
+
+    Args:
+        job_id: The job ID to query.
+        max_retries: Maximum number of retries for the qstat command.
+        update_interval: Seconds to wait between retries.
+
+    Returns:
+        Dictionary containing detailed job information from qstat -j.
+
+    Raises:
+        json.JSONDecodeError: If the JSON output from qstat is malformed.
+
+    Examples:
+        >>> # Get detailed info for a specific job
+        >>> job_info = get_qstat_job(12345)
+        >>> print(job_info["job_name"])
+        >>> print(job_info["slots"])
+    """
+    # Build qstat -j command
+    cmd = f"qstat -j {job_id} -json"
+
+    # Execute command
+    logger.debug(f"Executing: {cmd}")
+    try:
+        stdout, stderr = execute(cmd)
+    except subprocess.CalledProcessError as exc:
+        if exc.returncode == 1 and "do not exist" in exc.stderr:
+            logger.info(f"Job {job_id} not found in qstat")
+            return {}
+        raise exc
+
+    if stderr:
+        logger.warning(f"qstat stderr: {stderr}")
+
+    # Parse JSON output
+    try:
+        data = json.loads(stdout)
+    except json.JSONDecodeError as exc:
+        logger.error(f"Failed to parse qstat JSON output: {stdout[:500]}")
+        raise exc
+
+    # Extract job info (should be first item in job_info list)
+    if "job_info" in data and len(data["job_info"]) > 0:
+        return data["job_info"][0]
+
+    return {}
+
+
+def parse_joblist_json(stdout) -> pd.DataFrame:
+    """Parse qstat JSON output into a pandas DataFrame.
+
+    Args:
+        data: Raw JSON from qstat -json.
+
+    Returns:
+        DataFrame with one row per job/task, columns for job properties.
+    """
+
+    data = json.loads(stdout)
+
+    rows = []
+
+    # Parse running jobs from queue_info
+    if "queue_info" in data:
+        for queue_section in data["queue_info"]:
+            if "running jobs" not in queue_section:
+                continue
+            for job in queue_section["running jobs"]:
+                row = _extract_job_row(job, job_type="running")
+                rows.append(row)
+
+    # Parse pending jobs from job_info
+    if "job_info" in data:
+        for job_section in data["job_info"]:
+            if "pending jobs" not in job_section:
+                continue
+            for job in job_section["pending jobs"]:
+                row = _extract_job_row(job, job_type="pending")
+                rows.append(row)
+
+    if not rows:
+        logger.debug("No jobs found in qstat output")
+        return pd.DataFrame()
+
+    df = pd.DataFrame(rows)
+
+    return df
+
+
+def _extract_job_row(job: Dict[str, Any], job_type: str) -> Dict[str, Any]:
+    """Extract relevant fields from a job dictionary.
+
+    Args:
+        job: Dictionary containing job information.
+        job_type: Type of job ("running" or "pending").
+
+    Returns:
+        Dictionary with standardized job fields.
+    """
+    row = {
+        "job_number": job.get("JB_job_number", ""),
+        "priority": job.get("JAT_prio", 0.0),
+        "name": job.get("JB_name", ""),
+        "owner": job.get("JB_owner", ""),
+        "state": job.get("state", ""),
+        "slots": job.get("slots", 0),
+        "queue_name": job.get("queue_name", ""),
+        # "jclass_name": job.get("jclass_name", ""),
+        "job_type": job_type,
+    }
+
+    # Add start time for running jobs
+    if "JAT_start_time" in job:
+        row["start_time"] = job["JAT_start_time"]
+
+    # Add submission time for pending jobs
+    if "JB_submission_time" in job:
+        row["submission_time"] = job["JB_submission_time"]
+
+    # Add task ID if present (for array jobs)
+    if "JAT_task_number" in job:
+        row["task_id"] = job["JAT_task_number"]
+
+    return row
+
+
+def get_all_jobs():
+    """Get all jobs for all users"""
+    all_users = "\\*"
+    all_users = '"*"'
+    df = get_qstat(users=[all_users])
+    return df
+
+
+def get_running_jobs(
+    users: Optional[List[str]] = None,
+) -> pd.DataFrame:
+    """Get only running jobs.
+
+    Convenience function to filter for running jobs only.
+
+    Args:
+        users: List of usernames to filter jobs by.
+        max_retries: Maximum number of retries for the qstat command.
+        update_interval: Seconds to wait between retries.
+
+    Returns:
+        DataFrame with running jobs only.
+
+    Examples:
+        >>> # Get all running jobs for a user
+        >>> df = get_running_jobs(users=["testuser1"])
+    """
+
+    df = get_qstat(users=users)
+
+    if df.empty:
+        return df
+
+    # Filter to running state
+    df_running = df[df["state"].isin(TAGS_RUNNING)]
+
+    return df_running
+
+
+def get_pending_jobs(
+    users: Optional[List[str]] = None,
+) -> pd.DataFrame:
+    """Get only pending jobs.
+
+    Convenience function to filter for pending jobs only.
+
+    Args:
+        users: List of usernames to filter jobs by.
+        max_retries: Maximum number of retries for the qstat command.
+        update_interval: Seconds to wait between retries.
+
+    Returns:
+        DataFrame with pending jobs only.
+
+    Examples:
+        >>> # Get all pending jobs for a user
+        >>> df = get_pending_jobs(users=["testuser1"])
+    """
+    df = get_qstat(users=users)
+
+    if df.empty:
+        return df
+
+    # Filter to pending states
+    df_pending = df[df["state"].isin(TAGS_PENDING)]
+
+    return df_pending
+
+
+def parse_json_jobinfo(stdout):
+
+    # tree = json.loads(stdout)
+
+    jobs = []
+
+    return jobs
