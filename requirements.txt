@@ -2,7 +2,8 @@ jinja2
 mypy
 numpy
 pandas
+pandas-stubs
 pip
 pre-commit
 pytest
-tdqm
+tqdm
