@@ -9,7 +9,7 @@ TAGS_SUSPENDED = ["s", "ts", "S", "tS", "T", "tT", "Rs", "Rts", "RS", "RtS", "RT
 TAGS_ERROR = ["Eqw", "Ehqw", "EhRqw"]
 TAGS_DELETED = ["dr", "dt", "dRr", "dRt", "ds", "dS", "dT", "dRs", "dRS", "dRT"]
 
-TASK_IDENTIFIER = "$SGE_TASK_ID"
+TASK_ENVIRONMENT_VARIABLE = "$SGE_TASK_ID"
 
 UGE_TMPDIR = "TMPDIR"
 UGE_CORES = "NSLOTS"

@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from hpc_funcs.schedulers.uge.constants import TASK_ENVIRONMENT_VARIABLE
 from hpc_funcs.schedulers.uge.monitoring import wait_for_jobs
 from hpc_funcs.schedulers.uge.submission import (
     generate_single_script,
@@ -24,7 +25,7 @@ def test_single(global_tmp_path: Path):
 
     # Generate bash script
     success_string = "finished work"
-    command = f"echo 'before'\nsleep 20\n\necho '{success_string}'"
+    command = f"echo 'before'\nsleep 5\n\necho '{success_string}'"
     log_dir = tmp_path / "uge_testlogs"
 
     script: str = generate_single_script(
@@ -76,7 +77,7 @@ def test_taskarray(global_tmp_path: Path):
 
     # Generate bash script
     success_string = "finished work"
-    command = f"sleep 5 & echo '{success_string}'"
+    command = f'sleep 5 & echo "{success_string} {TASK_ENVIRONMENT_VARIABLE}"'
     log_dir = tmp_path / "uge_testlogs"
 
     script: str = generate_taskarray_script(
@@ -116,4 +117,8 @@ def test_taskarray(global_tmp_path: Path):
 
     # Parse output
     for _, lines in stdout.items():
-        assert success_string in lines
+
+        for line in lines:
+            if not line.strip():
+                continue
+            assert success_string in line
