@@ -1,6 +1,11 @@
-COMMAND_SUBMIT = "qsub"
-COMMAND_INTERACTIVE = "qrsh"
 
+# Task-array qstat ouput columns
+COLUMN_JOB = "job"
+COLUMN_JOB_ID = "job_number"
+COLUMN_SUBMISSION_TIME = "submission_time"
+COLUMN_TASKARRAY = "job-array tasks"
+
+# TODO Move to qstat.py and qrsh.py
 FLAG_SYNC = "-sync y"
 
 TAGS_PENDING = ["qw", "hqw", "hRwq"]

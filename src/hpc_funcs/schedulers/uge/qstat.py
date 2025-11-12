@@ -9,10 +9,17 @@ from hpc_funcs.shell import execute
 
 from .constants import TAGS_PENDING, TAGS_RUNNING
 
+COL_SPLIT = 5
+
 logger = logging.getLogger(__name__)
 
 
-def get_qstat(
+def get_qstat_args():
+
+    return
+
+
+def get_qstat_json(
     users: Optional[List[str]] = None,
     job_ids: Optional[List[Union[str, int]]] = None,
     queues: Optional[List[str]] = None,
@@ -77,7 +84,7 @@ def get_qstat(
     return df
 
 
-def get_qstat_job(
+def get_qstat_job_json(
     job_id: Union[str, int],
 ) -> Tuple[Dict[str, Any], list[str]]:
     """Get detailed information for a specific job using qstat -j -json.
@@ -158,6 +165,90 @@ def get_qstat_job(
         return data["job_info"][0], errors
 
     return {}, errors
+
+
+def get_qstat_text(
+    job_id: Union[str, int],
+) -> Tuple[Dict[str, Any], list[str]]:
+    """Get detailed information for a specific job using qstat -j.
+
+    This returns comprehensive information about a single job, including
+    resource requests, environment, submission details, and task status.
+
+    Args:
+        job_id: The job ID to query.
+        max_retries: Maximum number of retries for the qstat command.
+        update_interval: Seconds to wait between retries.
+
+    Returns:
+        Dictionary containing detailed job information from qstat -j.
+
+    Raises:
+        json.JSONDecodeError: If the JSON output from qstat is malformed.
+
+    Examples:
+        >>> # Get detailed info for a specific job
+        >>> job_info = get_qstat_job(12345)
+        >>> print(job_info["job_name"])
+        >>> print(job_info["slots"])
+        >>> print(job_info["state"])
+    """
+
+    cmd = f"qstat -j {job_id} -nenv"
+
+    logger.debug(f"Executing: {cmd}")
+
+    process = subprocess.run(
+        cmd,
+        encoding="utf-8",
+        capture_output=True,
+        shell=True,
+    )
+
+    stdout = process.stdout
+    stderr = process.stderr
+
+    if stderr:
+        logger.warning(f"qstat stderr: {stderr}")
+
+    # Find error lines
+
+    lines = stdout.splitlines()
+    if len(lines) == 1:
+        # Valid json
+        data = json.loads(stdout)
+        if "job_info" in data:
+            return data["job_info"][0], []
+        return {}, []
+
+    # If there are errors on job submission, uge will return the errors as lines before json output
+    # error reason   1: this is the reason it failed
+    # We need to filter them out to read the json
+
+    errors = []
+    stdout_lines = []
+    # Filter error lines to errors, and json lines to stdout_lines
+    for line in lines:
+        (errors if line.startswith("error reason") else stdout_lines).append(line)
+
+    del lines
+
+    stdout = "\n".join(stdout_lines)
+    data = json.loads(stdout)
+
+    del stdout_lines
+    del stdout
+
+    # If no jobs found, qstat returns
+    # {"unknown jobs":["29878954"]}
+    # We should return empty dict, but use logger to warn the job doesn't exist
+
+    # Extract job info (should be first item in job_info list)
+    if "job_info" in data and len(data["job_info"]) > 0:
+        return data["job_info"][0], errors
+
+    return {}, errors
+
 
 
 def parse_joblist_json(stdout) -> pd.DataFrame:
@@ -242,7 +333,7 @@ def get_all_jobs():
     """Get all jobs for all users"""
     all_users = "\\*"
     all_users = '"*"'
-    df = get_qstat(users=[all_users])
+    df = get_qstat_json(users=[all_users])
     return df
 
 
@@ -266,7 +357,7 @@ def get_running_jobs(
         >>> df = get_running_jobs(users=["testuser1"])
     """
 
-    df = get_qstat(users=users)
+    df = get_qstat_json(users=users)
 
     if df.empty:
         return df
@@ -296,7 +387,7 @@ def get_pending_jobs(
         >>> # Get all pending jobs for a user
         >>> df = get_pending_jobs(users=["testuser1"])
     """
-    df = get_qstat(users=users)
+    df = get_qstat_json(users=users)
 
     if df.empty:
         return df
@@ -307,10 +398,34 @@ def get_pending_jobs(
     return df_pending
 
 
-def parse_json_jobinfo(stdout):
 
-    # tree = json.loads(stdout)
+def parse_text_jobinfo(stdout: str) -> List[Dict[str, str]]:
+    """
+    Output is column-length based and sections split by "=".
+    Returns list key-value dict per section.
+    """
 
-    jobs = []
+    output: List[Dict[str, str]] = [dict()]
 
-    return jobs
+    lines = stdout.split("\n")
+
+    for line in lines:
+        if "===========" in line:
+            if len(output[-1]) > 1:
+                output += [dict()]
+            continue
+
+        # Format: pe_taskid     NONE
+        key = line[:COL_SPLIT].strip()
+        value = line[COL_SPLIT:].strip()
+
+        if len(key) == 0:
+            continue
+
+        key = key.strip()
+        value = value.strip()
+
+        output[-1][key] = value
+
+    return output
+

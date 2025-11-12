@@ -21,7 +21,7 @@ from typing import Any, Dict, Iterator, List
 logger = logging.getLogger(__name__)
 
 from hpc_funcs.schedulers.uge.constants import TAGS_PENDING, TAGS_RUNNING
-from hpc_funcs.schedulers.uge.qstat import get_qstat, get_qstat_job
+from hpc_funcs.schedulers.uge.qstat import get_qstat_job_json
 
 
 def wait_for_jobs(jobs: List[str], respiratory: int = 60) -> Iterator[str]:
@@ -55,7 +55,7 @@ def is_job_done(
     If unable to find job info, assume job is done.
     """
 
-    job_info, job_errors = get_qstat_job(job_id)
+    job_info, job_errors = get_qstat_job_json(job_id)
 
     if len(job_errors):
         logger.error(f"qstat error: {job_errors[0]}")
