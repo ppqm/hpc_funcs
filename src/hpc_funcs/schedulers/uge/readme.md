@@ -7,14 +7,19 @@ Functions that wraps they key functionality of UGE, to get queue info and submit
 
 First version should be able to
 
-- WaitForJobToFinish
-- WaitForJobToFinish-HoldJob
-- Task Array TDQM
-- Submit task-array
-- get qacctj job information
-- get cluster information
-- delete job
-- failed jobs exit_codes
+- [ ] WaitForJobToFinish
+- [ ] WaitForJobToFinish-HoldJob
+- [ ] Task Array TDQM
+- [x] Submit task-array
+- [x] get qacctj job information
+- [ ] get cluster information
+- [ ] delete job
+- [ ] failed jobs exit_codes
+
+
+# Examples
+
+- [ ] split pandas dataframe into chunks and make task-array with python workers
 
 
 # Overview of UGE commands
@@ -47,7 +52,6 @@ First version should be able to
     qstat
     qsub
     qtcsh
-
 
 
 # Job states

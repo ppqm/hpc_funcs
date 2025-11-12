@@ -1,7 +1,7 @@
 import json
 import logging
 import subprocess
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import pandas as pd
 
@@ -68,10 +68,6 @@ def get_qstat(
     logger.debug(f"Executing: {cmd}")
     stdout, stderr = execute(cmd)
 
-    print(stdout)
-    print()
-    print(stderr)
-
     if stderr:
         logger.warning(f"qstat stderr: {stderr}")
 
@@ -83,7 +79,7 @@ def get_qstat(
 
 def get_qstat_job(
     job_id: Union[str, int],
-) -> Dict[str, Any]:
+) -> Tuple[Dict[str, Any], list[str]]:
     """Get detailed information for a specific job using qstat -j -json.
 
     This returns comprehensive information about a single job, including
@@ -125,21 +121,43 @@ def get_qstat_job(
     if stderr:
         logger.warning(f"qstat stderr: {stderr}")
 
-    # Parse JSON output
-    try:
+    # Find error lines
+
+    lines = stdout.splitlines()
+    if len(lines) == 1:
+        # Valid json
         data = json.loads(stdout)
-    except json.JSONDecodeError as exc:
-        logger.error(f"Failed to parse qstat JSON output: {stdout[:500]}")
-        raise exc
+        if "job_info" in data:
+            return data["job_info"][0], []
+        return {}, []
+
+    # If there are errors on job submission, uge will return the errors as lines before json output
+    # error reason   1: this is the reason it failed
+    # We need to filter them out to read the json
+
+    errors = []
+    stdout_lines = []
+    # Filter error lines to errors, and json lines to stdout_lines
+    for line in lines:
+        (errors if line.startswith("error reason") else stdout_lines).append(line)
+
+    del lines
+
+    stdout = "\n".join(stdout_lines)
+    data = json.loads(stdout)
+
+    del stdout_lines
+    del stdout
 
     # If no jobs found, qstat returns
     # {"unknown jobs":["29878954"]}
+    # We should return empty dict, but use logger to warn the job doesn't exist
 
     # Extract job info (should be first item in job_info list)
     if "job_info" in data and len(data["job_info"]) > 0:
-        return data["job_info"][0]
+        return data["job_info"][0], errors
 
-    return {}
+    return {}, errors
 
 
 def parse_joblist_json(stdout) -> pd.DataFrame:

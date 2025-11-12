@@ -1,13 +1,9 @@
 import logging
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple
 
 from jinja2 import Template
-
-from hpce_utils.files import generate_name
-from hpce_utils.managers.uge import constants
-from hpce_utils.shell import execute
 
 DEFAULT_LOG_DIR = Path("./ugelogs/")
 TEMPLATE_TASKARRAY = Path(__file__).parent / "templates" / "submit-task-array.jinja"
@@ -19,34 +15,6 @@ LMOD_LINES = [
     "have been reloaded with a version change",
     "=>",
 ]
-
-
-def generate_command(sync: bool = False, export: bool = False) -> str:
-    """Generate UGE/SGE submit command with approriate flags
-
-    export:
-       Available for qsub, qsh, qrsh, qlogin and qalter.
-       Specifies that all environment variables active within the qsub utility
-       be exported to the context  of  the job.
-
-    sync:
-       Available for qsub.
-       wait for the job to complete before exiting. If the job completes
-       successfully, qsub's exit code will be that of the completed job.
-
-    """
-
-    qrsh = constants.command_submit
-
-    cmd = [qrsh]
-
-    if sync:
-        cmd.append(constants.flag_sync)
-
-    if export:
-        cmd.append(constants.flag_environment_export)
-
-    return " ".join(cmd)
 
 
 # pylint: disable=too-many-arguments,too-many-locals,dangerous-default-value
@@ -173,84 +141,6 @@ def generate_log_dir(log_dir: Path | None) -> str | None:
         return str(log_dir.resolve())
 
     return None
-
-
-# pylint: disable=dangerous-default-value
-def submit_script(
-    submit_script: str,
-    scr: Optional[Union[str, Path]] = None,
-    filename: Optional[str] = None,
-    cmd: str = constants.command_submit,
-    cmd_options: Dict[str, str] = {},
-    dry: bool = False,
-) -> Tuple[Optional[str], Optional[Path]]:
-    """Submit script and return UGE Job ID
-
-    return:
-        job_id
-        script path
-    """
-
-    if filename is None:
-        filename = f"tmp_uge.{generate_name()}.sh"
-
-    if scr is None:
-        scr = "./"
-
-    scr = Path(scr)
-    scr.mkdir(parents=True, exist_ok=True)
-
-    assert scr.is_dir()
-
-    with open(scr / filename, "w") as f:
-        f.write(submit_script)
-
-    logger.debug(f"Writing {filename} for UGE on {scr}")
-
-    # TODO Needs some re-checks
-    cmd = f"{cmd} {{filename}}"
-    cmd = cmd.format(filename=filename, **cmd_options)
-    logger.debug(cmd)
-    logger.debug(scr)
-
-    if dry:
-        logger.info("Dry submission of qsub command")
-        logger.info(f"cmd={cmd}")
-        logger.info(f"scr={scr}")
-        return None, scr / filename
-
-    stdout, stderr = execute(cmd, cwd=scr)
-
-    if stderr:
-        for line in stderr.split("\n"):
-            logger.error(line)
-        return None, scr / filename
-
-    if not stdout:
-        logger.error("Unable to fetch qsub job id from stdout")
-        return None, scr / filename
-
-    # Successful submission
-    # find id
-    logger.info(f"submit stdout: {stdout.strip().rstrip()}")
-
-    #
-    # Your job JOB_ID ("JOB_NAME") has been submitted
-    uge_id = stdout.strip().rstrip().split("\n")[-1]
-    if "has been submitted" not in uge_id:
-        raise RuntimeError(f"Could not find UGE Job ID in: '{uge_id}'")
-    uge_id = uge_id.split()[2]
-    uge_id = uge_id.split(".")[0]
-
-    # Test format of job_id
-    try:
-        int(uge_id)
-    except ValueError:
-        raise ValueError("UGE Job ID is not correct format")
-
-    logger.info(f"got job_id: {uge_id}")
-
-    return uge_id, scr / filename
 
 
 def read_logfiles(
