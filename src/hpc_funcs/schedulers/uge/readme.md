@@ -7,51 +7,59 @@ Functions that wraps they key functionality of UGE, to get queue info and submit
 
 First version should be able to
 
-- [ ] WaitForJobToFinish
+- [x] WaitForJobToFinish
 - [ ] WaitForJobToFinish-HoldJob
 - [ ] Task Array TDQM
 - [x] Submit task-array
 - [x] get qacctj job information
 - [ ] get cluster information
-- [ ] delete job
-- [ ] failed jobs exit_codes
+- [x] delete job
+- [x] failed jobs exit_codes
 
+- [ ] Check molpipe usage
+- [ ] Check molpipejob usage
+
+# Extra
+
+- [ ] qmod / qaliter to change concurrent tasks for uge
 
 # Examples
 
 - [ ] split pandas dataframe into chunks and make task-array with python workers
 
 
-# Overview of UGE commands
+# UGE commands
 
-    qstat
-    qhost
-    qmod
-    qsh
-    qsub
-    qacct
-    qalter
-    qconf
-    qdel
-    qhold
-    qhost
-    qlogin
-    qmake
-    qmod
-    qmon
-    qping
-    qquota
-    qrdel
-    qresub
-    qrls
-    qrsh
-    qrstat
-    qrsub
-    qselect
-    qsh
-    qstat
-    qsub
-    qtcsh
+Overview of which commands has been wrapped
+
+- [x] `qstat`
+- [ ] `qhost`
+- [ ] `qmod`
+- [ ] `qsh`
+- [x] `qsub`
+- [x] `qacct`
+- [ ] `qalter`
+- [ ] `qconf`
+- [x] `qdel`
+- [ ] `qhold`
+- [ ] `qhost`
+- [ ] `qlogin`
+- [ ] `qmake`
+- [ ] `qmod`
+- [ ] `qmon`
+- [ ] `qping`
+- [ ] `qquota`
+- [ ] `qrdel`
+- [ ] `qresub`
+- [ ] `qrls`
+- [ ] `qrsh`
+- [ ] `qrstat`
+- [ ] `qrsub`
+- [ ] `qselect`
+- [ ] `qsh`
+- [ ] `qstat`
+- [x] `qsub`
+- [ ] `qtcsh`
 
 
 # Job states
