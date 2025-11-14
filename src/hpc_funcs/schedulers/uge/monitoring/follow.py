@@ -1,13 +1,12 @@
-import logging
-from pandas import DataFrame
-import time
 import datetime
-import pandas as pd
-from typing import Dict, List, Union, Tuple, Optional
-import tqdm
+import logging
+import time
+from typing import Dict
 
-from ..constants import COLUMN_JOB, COLUMN_JOB_ID, COLUMN_SUBMISSION_TIME, COLUMN_TASKARRAY
-from ..qstat import get_all_jobs, get_qstat_job_json
+import tqdm
+from pandas import DataFrame
+
+from ..qstat import get_all_jobs_text, get_qstat_job_xml
 
 DATE_FORMAT = "%m/%d/%Y %H:%M:%S"
 TQDM_LENGTH = 95
@@ -25,46 +24,51 @@ def get_time_from_ugestr(time_str: str):
 
 
 class TaskarrayProgress:
+
+    @staticmethod
+    def by_jobid(job_id: str, position: int = 0, file=None):
+
+        job_id = str(job_id)
+        job_infos, job_errors = get_qstat_job_xml(job_id)
+        assert len(job_infos)
+        job_info = job_infos[0]
+
+        return TaskarrayProgress(job_info, position=position, file=file)
+
     def __init__(
         self,
-        job_id: str,
+        job_info: Dict,
         position: int = 0,
+        file=None,
     ) -> None:
         self.position = position
-        self.job_id = str(job_id)
-
-        # Get info
-
-        all_stats = get_all_jobs()
-        job_info, job_errors = get_qstat_job_json(job_id)
-
-        # TODO Check if qstat job actually gives the content needed
-
-        print(all_stats)
-
-        # Only about this job
-        _job_pdf = all_stats[all_stats[COLUMN_JOB_ID] == self.job_id]
-        job_status = dict(_job_pdf.iloc[0])
-        self.init_bar(job_info, job_status)
+        self.file = file
+        self.job_id: str
+        self.init_bar(job_info, {})
 
     def init_bar(self, job_info: dict, job_status: dict) -> None:
 
-        # Job Info
-        n_pending = job_info.get("pending_tasks", 0)
-        n_running = len(job_info.get("job_array_tasks", []))
-        n_concurrent = job_info.get("task_concurrency", 1)
+        job_id = job_info.get("JB_job_number")
+        assert job_id is not None
+        self.job_id = job_id
 
-        time_start = job_info.get(COLUMN_SUBMISSION_TIME)
-        assert time_start is not None
-        time_start = get_time_from_ugestr(time_start)
+        timestamp = job_info.get(
+            "JB_submission_time"
+        )  # in UNIX timestamp, but with too many digits
+        assert timestamp is not None
+        time_start = datetime.datetime.fromtimestamp(int(timestamp) / 1000)
+        time_start = time.mktime(time_start.timetuple())
 
-        # From overview
-        job_id = job_info[COLUMN_JOB_ID]
-        # job_name = job_info["job_name"]
+        print("time start", time_start)
 
-        # Count total tasks
-        n_total_ = array_info.split(":")[0].split("-")[-1]
-        self.n_total = int(n_total_)
+        job_array_info = job_info.get("JB_ja_structure", [])
+        assert len(job_array_info)
+
+        job_array_start = int(job_array_info[0].get("RN_min", 1))
+        job_array_stop = int(job_array_info[0].get("RN_max", 1))
+        job_array_concurrent = int(job_array_info[0].get("RN_step", 1))
+
+        self.n_total = job_array_stop
 
         # Set title
         self.title = job_id
@@ -73,16 +77,22 @@ class TaskarrayProgress:
             total=self.n_total,
             desc=f"{self.title}",
             position=self.position,
+            unit="task",
             ncols=TQDM_LENGTH,
+            file=self.file,
         )
 
         # Reset time
-        self.pbar.last_print_t = self.pbar.start_t = start_time__
+        self.pbar.last_print_t = self.pbar.start_t = time_start
 
-        # Set finished and running
-        self.update(job_status)
+    def update(self, joblist: None | DataFrame = None) -> None:
 
-    def update(self, status: dict) -> None:
+        if joblist is None:
+            joblist = get_all_jobs_text()
+
+        # Get status
+        assert joblist is not None
+        joblist = joblist[joblist["job_number"] == self.job_id]
 
         n_running = status.get("running", 0)
         n_pending = status.get("pending", 0)
@@ -106,14 +116,6 @@ class TaskarrayProgress:
         self.pbar.set_description(f"{self.title} (0)", refresh=False)
         self.pbar.n = n_total
         self.pbar.refresh()
-
-    def log_errors(self) -> None:
-
-        qstatj, _ = get_qstatj(self.job_id)
-        errors = _get_errors_from_qstatj(qstatj)
-
-        for error in errors:
-            logger.error(f"uge {self.job_id}: {error.strip()}")
 
     def is_finished(self) -> bool:
         return self.pbar.n >= self.n_total

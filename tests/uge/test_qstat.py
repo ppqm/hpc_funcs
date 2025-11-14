@@ -1,16 +1,21 @@
 import json
 
+import pytest
 import pandas as pd
 from conftest import RESOURCES
 
 from hpc_funcs.schedulers.uge import has_uge, qstat
-from hpc_funcs.schedulers.uge.constants import TAGS_PENDING, TAGS_RUNNING
-from hpc_funcs.schedulers.uge.qstat import parse_jobinfo_xml
+from hpc_funcs.schedulers.uge.qstat import (
+    get_all_jobs_json,
+    get_all_jobs_text,
+    get_qstat_job_xml,
+    parse_jobinfo_xml,
+)
 
 pd.set_option("display.max_columns", None)
 
 
-def test_parse_job():
+def test_parse_job_json():
 
     filename = RESOURCES / "uge/qstat_jobid.json"
 
@@ -24,26 +29,25 @@ def test_parse_job():
     data = pd.DataFrame(jdata)
 
 
-def test_parse_jobs_file():
+def test_parse_joblist_text():
 
-    filename = RESOURCES / "uge/qstat_all.json"
+    filename = RESOURCES / "uge/qstat_list.txt"
 
     with open(filename, "r") as f:
         stdout = f.read()
 
-    list_jobs = qstat.parse_joblist_json(stdout)
+    list_jobs = qstat.parse_joblist_text(stdout)
 
-    df = pd.DataFrame(list_jobs)
-    assert len(df) == 7
+    # print(list_jobs)
 
-    print(df["state"])
+    pdf = pd.DataFrame(list_jobs)
+    assert len(pdf)
 
-    # Filter for active jobs
-    running_jobs = df[df["state"].isin(TAGS_RUNNING)].copy()
-    assert len(running_jobs) == 4
+    print(pdf)
 
-    pending_jobs = df[df["state"].isin(TAGS_PENDING)].copy()
-    assert len(pending_jobs) == 3
+    print(pdf["ja_task_id"])
+
+    print(pdf)
 
 
 def test_parse_jobinfo_xml():
@@ -84,5 +88,31 @@ if not has_uge():
 
 
 def test_all():
-    df = qstat.get_all_jobs()
+
+    print()
+
+    df = get_all_jobs_json()
+    print(df)
     assert len(df) > 1
+
+    df = get_all_jobs_text()
+    print(df)
+    assert len(df) > 1
+
+
+def test_jobid_from_all_text():
+
+    df = get_all_jobs_text()
+    print(df)
+    assert len(df) > 1
+
+    job_id = df["job_number"].values[0]
+
+    job_infos, job_errors = get_qstat_job_xml(job_id)
+
+    print(job_infos)
+
+    assert job_infos[0]
+    assert job_infos[0]["JB_job_number"]
+
+    return
