@@ -1,32 +1,12 @@
-import json
-
-import pytest
 import pandas as pd
+import pytest
 from conftest import RESOURCES
 
 from hpc_funcs.schedulers.uge import has_uge, qstat
-from hpc_funcs.schedulers.uge.qstat import (
-    get_all_jobs_json,
-    get_all_jobs_text,
-    get_qstat_job_xml,
-    parse_jobinfo_xml,
-)
+from hpc_funcs.schedulers.uge.qstat import get_all_jobs_json, get_all_jobs_text
+from hpc_funcs.schedulers.uge.qstat_xml import get_qstat_job_xml, parse_jobinfo_xml
 
 pd.set_option("display.max_columns", None)
-
-
-def test_parse_job_json():
-
-    filename = RESOURCES / "uge/qstat_jobid.json"
-
-    with open(filename, "r") as f:
-        stdout = f.read()
-
-    jdata = json.loads(stdout)
-
-    print(jdata)
-
-    data = pd.DataFrame(jdata)
 
 
 def test_parse_joblist_text():

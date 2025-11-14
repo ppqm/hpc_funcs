@@ -37,7 +37,7 @@ def get_qstat_job_json(
         >>> print(job_info["state"])
     """
 
-    cmd = f"qstat -j {job_id} -nenv"
+    cmd = f"qstat -j {job_id} -nenv -json"
 
     logger.debug(f"Executing: {cmd}")
 

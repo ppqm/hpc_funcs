@@ -6,7 +6,8 @@ from typing import Dict
 import tqdm
 from pandas import DataFrame
 
-from ..qstat import get_all_jobs_text, get_qstat_job_xml
+from ..qstat import get_all_jobs_text
+from ..qstat_xml import get_qstat_job_xml
 
 DATE_FORMAT = "%m/%d/%Y %H:%M:%S"
 TQDM_LENGTH = 95
@@ -93,6 +94,8 @@ class TaskarrayProgress:
         # Get status
         assert joblist is not None
         joblist = joblist[joblist["job_number"] == self.job_id]
+
+        print(joblist)
 
         n_running = status.get("running", 0)
         n_pending = status.get("pending", 0)

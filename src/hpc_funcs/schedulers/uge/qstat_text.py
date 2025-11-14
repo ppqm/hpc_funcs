@@ -1,11 +1,40 @@
 import logging
+import re
+from itertools import pairwise
 from typing import Dict, List, Optional
 
 import pandas as pd
+from pandas import DataFrame
 
 from hpc_funcs.shell import execute
 
+from .constants import TAGS_ERROR, TAGS_PENDING, TAGS_RUNNING
+
 logger = logging.getLogger(__name__)
+
+COLUMN_JOBID = "job-ID"
+COLUMN_PRIORITY = "prior"
+COLUMN_NAME = "name"
+COLUMN_USER = "user"
+COLUMN_STATE = "state"
+COLUMN_TIME = "submit/start at"
+COLUMN_QUEUE = "queue"
+COLUMN_JCLASS = "jclass"
+COLUMN_SLOTS = "slots"
+COLUMN_ARRAY = "ja-task-ID"
+
+COLUMNS_TEXT = [
+    COLUMN_JOBID,
+    COLUMN_PRIORITY,
+    COLUMN_NAME,
+    COLUMN_USER,
+    COLUMN_STATE,
+    COLUMN_TIME,
+    COLUMN_QUEUE,
+    COLUMN_JCLASS,
+    COLUMN_SLOTS,
+    COLUMN_ARRAY,
+]
 
 
 def get_qstat_text(
@@ -89,22 +118,10 @@ def parse_joblist_text(stdout: str) -> pd.DataFrame:
     # Data starts from third line
 
     # Parse the header to find column positions
-    # The columns are: job-ID, prior, name, user, state, submit/start at, queue, jclass, slots, ja-task-ID
-    # We'll use the header line to identify where each column starts
+    # use the header line to identify where each column starts
 
     # Find column start positions based on header
-    col_positions = {
-        "job-ID": header_line.find("job-ID"),
-        "prior": header_line.find("prior"),
-        "name": header_line.find("name"),
-        "user": header_line.find("user"),
-        "state": header_line.find("state"),
-        "submit/start at": header_line.find("submit/start at"),
-        "queue": header_line.find("queue"),
-        "jclass": header_line.find("jclass"),
-        "slots": header_line.find("slots"),
-        "ja-task-ID": header_line.find("ja-task-ID"),
-    }
+    column_positions = {column_name: header_line.find(column_name) for column_name in COLUMNS_TEXT}
 
     # TODO assert check if all headers are there
 
@@ -117,49 +134,12 @@ def parse_joblist_text(stdout: str) -> pd.DataFrame:
         # We'll use the positions to slice the line
         job = {}
 
-        # job-ID: from start to prior column
-        job_id_end = col_positions["prior"]
-        job["job_number"] = line[col_positions["job-ID"] : job_id_end].strip()
+        for start, end in pairwise(COLUMNS_TEXT):
 
-        # prior: from prior to name column
-        prior_end = col_positions["name"]
-        job["priority"] = line[col_positions["prior"] : prior_end].strip()
+            idx_a = column_positions[start] if start else None
+            idx_b = column_positions[end] if end else None
 
-        # name: from name to user column
-        name_end = col_positions["user"]
-        job["name"] = line[col_positions["name"] : name_end].strip()
-
-        # user: from user to state column
-        user_end = col_positions["state"]
-        job["owner"] = line[col_positions["user"] : user_end].strip()
-
-        # state: from state to submit/start at column
-        state_end = col_positions["submit/start at"]
-        job["state"] = line[col_positions["state"] : state_end].strip()
-
-        # submit/start at: from submit/start at to queue column
-        datetime_end = col_positions["queue"]
-        job["submission_time"] = line[col_positions["submit/start at"] : datetime_end].strip()
-
-        # queue: from queue to jclass column
-        queue_end = col_positions["jclass"]
-        job["queue"] = line[col_positions["queue"] : queue_end].strip()
-
-        # jclass: from jclass to slots column
-        jclass_end = col_positions["slots"]
-        jclass_val = line[col_positions["jclass"] : jclass_end].strip()
-        if jclass_val:
-            job["jclass"] = jclass_val
-
-        # slots: from slots to ja-task-ID column
-        slots_end = col_positions["ja-task-ID"]
-        job["slots"] = line[col_positions["slots"] : slots_end].strip()
-
-        # ja-task-ID: from ja-task-ID to end of line
-        ja_task_id = line[col_positions["ja-task-ID"] :].strip()
-
-        if ja_task_id:
-            job["ja_task_id"] = ja_task_id
+            job[start] = line[idx_a:idx_b]
 
         jobs.append(job)
 
@@ -195,3 +175,93 @@ def parse_text_jobinfo(stdout: str) -> List[Dict[str, str]]:
         output[-1][key] = value
 
     return output
+
+
+def parse_qstat_text(stdout: str) -> pd.DataFrame:
+    stdout = stdout.strip()
+    lines = stdout.split("\n")
+
+    header = lines[0].split()
+    header.remove("at")
+    header_indicies = []
+
+    rows = []
+
+    for line in header[1:]:
+        idx = lines[0].index(line)
+        header_indicies.append(idx)
+
+    def split_qstat_line(line):
+        idx = 0
+
+        for ind in header_indicies:
+            yield line[idx:ind].strip()
+            idx = ind
+
+        yield line[idx:]
+
+    for line in lines[2:]:
+        if not line.strip():
+            continue
+
+        line_ = split_qstat_line(line)
+        line_ = list(line_)
+
+        row = {key: value for key, value in zip(header, line_)}
+        rows.append(row)
+
+    pdf = pd.DataFrame(rows)
+    pdf["slots"] = pdf["slots"].astype(int)
+
+    return pdf
+
+
+def parse_taskarray(pdf: DataFrame) -> pd.DataFrame:
+    col_id = "job-ID"
+    col_state = "state"
+    col_array = "ja-task-ID"
+
+    # for unique job-ids
+    job_ids = pdf[col_id].unique()
+
+    def _parse(line):
+        count = 0
+
+        lines = line.split(",")
+        for task in lines:
+            if "-" not in task:
+                count += 1
+                continue
+
+            start, stop, _ = re.split(",|:|-|!", task)
+            count += int(stop) - int(start)
+
+        return count
+
+    rows = []
+
+    for job_id in job_ids:
+        jobs = pdf[pdf[col_id] == job_id]
+
+        pending_jobs = jobs[jobs[col_state].isin(TAGS_PENDING)]
+        running_jobs = jobs[jobs[col_state].isin(TAGS_RUNNING)]
+        error_jobs = jobs[jobs[col_state].isin(TAGS_ERROR)]
+        # deleted_jobs = jobs[jobs[col_state].isin(deleted_tags)]
+
+        pending_count = pending_jobs[col_array].apply(_parse)
+        error_count = error_jobs[col_array].apply(_parse)
+
+        n_running = len(running_jobs)
+        n_pending = pending_count.values.sum()
+        n_error = error_count.values.sum()
+
+        row = {
+            "job": job_id,
+            "running": n_running,
+            "pending": n_pending,
+            "error": n_error,
+        }
+
+        rows.append(row)
+
+    return pd.DataFrame(rows)

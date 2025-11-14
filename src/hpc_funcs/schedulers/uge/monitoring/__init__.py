@@ -14,6 +14,8 @@
 #     counts = counts.sort_values()  # type: ignore
 
 #     return counts
+
+import copy
 import logging
 import time
 from typing import Any, Dict, Iterator, List
@@ -21,27 +23,38 @@ from typing import Any, Dict, Iterator, List
 logger = logging.getLogger(__name__)
 
 from hpc_funcs.schedulers.uge.constants import TAGS_PENDING, TAGS_RUNNING
-from hpc_funcs.schedulers.uge.qstat import get_qstat_job_json
+from hpc_funcs.schedulers.uge.qstat_json import get_qstat_job_json
 
 
-def wait_for_jobs(jobs: List[str], respiratory: int = 60) -> Iterator[str]:
+def wait_for_jobs(jobs: List[str], sleep: int = 60) -> Iterator[str]:
     """ """
 
     logger.info(f"Waiting for {len(jobs)} job(s) on UGE...")
 
     start_time = time.time()
 
+    jobs = copy.deepcopy(jobs)
+
+    print(jobs)
+
     while len(jobs):
         logger.info(
-            f"... and breathe for {respiratory} sec, still waiting for {len(jobs)} job(s) to finish..."
+            f"... and breathe for {sleep} sec, still waiting for {len(jobs)} job(s) to finish..."
         )
 
-        time.sleep(respiratory)
+        print("okay", sleep)
+
+        time.sleep(sleep)
+
+        rm_list = []
 
         for job_id in jobs:
             if is_job_done(job_id):
                 yield job_id
-                jobs.remove(job_id)
+                rm_list.append(job_id)
+
+        for job_id in rm_list:
+            jobs.remove(job_id)
 
     end_time = time.time()
     diff_time = end_time - start_time
