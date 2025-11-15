@@ -9,12 +9,12 @@ First version should be able to
 
 - [x] WaitForJobToFinish
 - [ ] WaitForJobToFinish-HoldJob
-- [ ] Task Array TDQM
+- [x] Task Array TDQM
 - [x] Submit task-array
 - [x] get qacctj job information
-- [ ] get cluster information
 - [x] delete job
 - [x] failed jobs exit_codes
+- [ ] get cluster information
 - [ ] script in test/resources/uge to generate example output files (don't use jq)
 - [ ] can json load support, if name exist already create a new?
 
