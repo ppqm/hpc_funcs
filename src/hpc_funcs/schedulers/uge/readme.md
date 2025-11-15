@@ -14,7 +14,7 @@ First version should be able to
 - [x] get qacctj job information
 - [x] delete job
 - [x] failed jobs exit_codes
-- [ ] get cluster information
+- [x] get cluster information
 - [ ] script in test/resources/uge to generate example output files (don't use jq)
 - [ ] can json load support, if name exist already create a new?
 
@@ -48,7 +48,7 @@ Overview of which commands has been wrapped
 - [x] `qdel`
 - [ ] `qhold`
 - [ ] `qhost`
-- [-] `qlogin`
+- [ ] ~~`qlogin`~~
 - [ ] `qmake`
 - [ ] `qmod`
 - [ ] `qmon`
