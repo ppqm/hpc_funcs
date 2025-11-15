@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 COL_SPLIT = 13
 
 
-def get_job_accounting(job_id):
+def get_job_accounting(job_id: str) -> List[Dict[str, str]]:
 
     cmd = f"qacct -j {job_id}"
 

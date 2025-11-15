@@ -68,8 +68,8 @@ def get_qstat_job_json(
     # error reason   1: this is the reason it failed
     # We need to filter them out to read the json
 
-    errors = []
-    stdout_lines = []
+    errors: list[str] = []
+    stdout_lines: list[str] = []
     # Filter error lines to errors, and json lines to stdout_lines
     for line in lines:
         (errors if line.startswith("error reason") else stdout_lines).append(line)

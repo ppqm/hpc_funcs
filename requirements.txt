@@ -7,3 +7,4 @@ pip
 pre-commit
 pytest
 tqdm
+types-tqdm
