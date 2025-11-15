@@ -54,41 +54,7 @@ def get_qstat_job_json(
     if stderr:
         logger.warning(f"qstat stderr: {stderr}")
 
-    # Find error lines
-
-    lines = stdout.splitlines()
-    if len(lines) == 1:
-        # Valid json
-        data = json.loads(stdout)
-        if "job_info" in data:
-            return data["job_info"][0], []
-        return {}, []
-
-    # If there are errors on job submission, uge will return the errors as lines before json output
-    # error reason   1: this is the reason it failed
-    # We need to filter them out to read the json
-
-    errors: list[str] = []
-    stdout_lines: list[str] = []
-    # Filter error lines to errors, and json lines to stdout_lines
-    for line in lines:
-        (errors if line.startswith("error reason") else stdout_lines).append(line)
-
-    del lines
-
-    stdout = "\n".join(stdout_lines)
-    data = json.loads(stdout)
-
-    del stdout_lines
-    del stdout
-
-    # If no jobs found, qstat returns
-    # {"unknown jobs":["29878954"]}
-    # We should return empty dict, but use logger to warn the job doesn't exist
-
-    # Extract job info (should be first item in job_info list)
-    if "job_info" in data and len(data["job_info"]) > 0:
-        return data["job_info"][0], errors
+    rows, errors = parse_jobinfo_json(stdout)
 
     return {}, errors
 
@@ -145,12 +111,34 @@ def get_qstat_json(
         logger.warning(f"qstat stderr: {stderr}")
 
     # Convert to DataFrame
-    df = parse_joblist_json(stdout)
+    rows = parse_joblist_json(stdout)
+
+    df = pd.DataFrame(rows)
 
     return df
 
 
-def parse_joblist_json(stdout) -> pd.DataFrame:
+def parse_jobinfo_json(stdout: str):
+
+    errors: list[str] = []
+    stdout_lines: list[str] = []
+    # Filter error lines to errors, and json lines to stdout_lines
+    for line in stdout.splitlines():
+        (errors if line.startswith("error reason") else stdout_lines).append(line)
+
+    stdout = "\n".join(stdout_lines)
+
+    data = json.loads(stdout)
+
+    if "job_info" not in data:
+        return [], errors
+
+    rows = data["jobinfo"]
+
+    return rows, errors
+
+
+def parse_joblist_json(stdout) -> List[Dict[str, str]]:
     """Parse qstat JSON output into a pandas DataFrame.
 
     Args:
@@ -184,11 +172,9 @@ def parse_joblist_json(stdout) -> pd.DataFrame:
 
     if not rows:
         logger.debug("No jobs found in qstat output")
-        return pd.DataFrame()
+        return rows
 
-    df = pd.DataFrame(rows)
-
-    return df
+    return rows
 
 
 def _extract_job_row(job: Dict[str, Any], job_type: str) -> Dict[str, Any]:
