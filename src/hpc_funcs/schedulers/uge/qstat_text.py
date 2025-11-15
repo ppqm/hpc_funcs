@@ -7,7 +7,7 @@ from pandas import DataFrame
 
 from hpc_funcs.shell import execute
 
-from .constants import TAGS_ERROR, TAGS_PENDING, TAGS_RUNNING
+from .constants import COLUMN_JOB, TAGS_ERROR, TAGS_PENDING, TAGS_RUNNING
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +22,12 @@ COLUMN_JCLASS = "jclass"
 COLUMN_SLOTS = "slots"
 COLUMN_ARRAY = "ja-task-ID"
 
+# Summary table
+COLUMN_RUNNING = "running"
+COLUMN_PENDING = "pending"
+COLUMN_ERROR = "error"
+
+# Ordered qstat text joblist columns
 COLUMNS_TEXT = [
     COLUMN_JOBID,
     COLUMN_PRIORITY,
@@ -224,12 +230,9 @@ def parse_qstat_text(stdout: str) -> pd.DataFrame:
 
 
 def parse_taskarray(pdf: DataFrame) -> pd.DataFrame:
-    col_id = COLUMN_JOBID
-    col_state = COLUMN_STATE
-    col_array = COLUMN_ARRAY
 
     # for unique job-ids
-    job_ids = pdf[col_id].unique()
+    job_ids = pdf[COLUMN_JOBID].unique()
 
     def _parse(line):
         count = 0
@@ -248,15 +251,15 @@ def parse_taskarray(pdf: DataFrame) -> pd.DataFrame:
     rows = []
 
     for job_id in job_ids:
-        jobs = pdf[pdf[col_id] == job_id]
+        jobs = pdf[pdf[COLUMN_JOBID] == job_id]
 
-        pending_jobs = jobs[jobs[col_state].isin(TAGS_PENDING)]
-        running_jobs = jobs[jobs[col_state].isin(TAGS_RUNNING)]
-        error_jobs = jobs[jobs[col_state].isin(TAGS_ERROR)]
-        # deleted_jobs = jobs[jobs[col_state].isin(deleted_tags)]
+        pending_jobs = jobs[jobs[COLUMN_STATE].isin(TAGS_PENDING)]
+        running_jobs = jobs[jobs[COLUMN_STATE].isin(TAGS_RUNNING)]
+        error_jobs = jobs[jobs[COLUMN_STATE].isin(TAGS_ERROR)]
+        # deleted_jobs = jobs[jobs[COLUMN_STATE].isin(deleted_tags)]
 
-        pending_count = pending_jobs[col_array].apply(_parse)
-        error_count = error_jobs[col_array].apply(_parse)
+        pending_count = pending_jobs[COLUMN_ARRAY].apply(_parse)
+        error_count = error_jobs[COLUMN_ARRAY].apply(_parse)
 
         n_running = len(running_jobs)
         n_pending = pending_count.values.sum()
@@ -264,9 +267,9 @@ def parse_taskarray(pdf: DataFrame) -> pd.DataFrame:
 
         row = {
             COLUMN_JOBID: job_id,
-            "running": n_running,
-            "pending": n_pending,
-            "error": n_error,
+            COLUMN_RUNNING: n_running,
+            COLUMN_PENDING: n_pending,
+            COLUMN_ERROR: n_error,
         }
 
         rows.append(row)
