@@ -53,7 +53,7 @@ def test_single(global_tmp_path: Path):
     # Wait
     finished_job_id: str | None = None
 
-    for fjob_id in wait_for_jobs([job_id], respiratory=5):
+    for fjob_id in wait_for_jobs([job_id], sleep=5):
         print(f"job {fjob_id} finished")
         finished_job_id = fjob_id
 
@@ -107,7 +107,7 @@ def test_taskarray(global_tmp_path: Path):
     # Wait
     finished_job_id: str | None = None
 
-    for fjob_id in wait_for_jobs([job_id], respiratory=2):
+    for fjob_id in wait_for_jobs([job_id], sleep=2):
         print(f"job {fjob_id} finished")
         finished_job_id = fjob_id
 
@@ -166,7 +166,7 @@ def test_failed_command(global_tmp_path: Path):
 
     # Wait
     finished_job_id: str | None = None
-    for finished_job_id in wait_for_jobs([job_id], respiratory=10):
+    for finished_job_id in wait_for_jobs([job_id], sleep=10):
         print(f"job {finished_job_id} finished")
         assert finished_job_id is not None
 

@@ -1,14 +1,14 @@
 import logging
 import subprocess
 import xml.etree.ElementTree as ET
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Union
 
 logger = logging.getLogger(__name__)
 
 
 def get_qstat_job_xml(
     job_id: Union[str, int],
-) -> Tuple[List[Dict[str, Any]], List[str]]:
+) -> List[Dict[str, Any]]:
     """Get detailed information for a specific job using qstat -j -xml.
 
     This returns comprehensive information about a single job, including
@@ -49,27 +49,13 @@ def get_qstat_job_xml(
     if stderr:
         logger.warning(f"qstat stderr: {stderr}")
 
-    # Parse error lines that might appear before XML
-    lines = stdout.splitlines()
-    errors = []
-    xml_lines = []
-
-    for line in lines:
-        if line.startswith("error reason"):
-            errors.append(line)
-        else:
-            xml_lines.append(line)
-
-    del lines
-    xml_str = "\n".join(xml_lines)
-
     # Parse the XML
     try:
-        jobs = parse_jobinfo_xml(xml_str)
-        return jobs, errors
+        jobs = parse_jobinfo_xml(stdout)
+        return jobs
     except ET.ParseError as e:
         logger.error(f"Failed to parse XML output: {e}")
-        return [], errors
+        return []
 
 
 def parse_jobinfo_xml(stdout_xml: str):

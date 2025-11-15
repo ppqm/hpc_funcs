@@ -4,7 +4,7 @@ import time
 from typing import Any, Dict, Iterator, List
 
 import pandas as pd
-from pandas import DataFrame
+from pandas import DataFrame, Series
 
 from hpc_funcs.schedulers.uge.constants import TAGS_RUNNING
 from hpc_funcs.schedulers.uge.qstat import get_all_jobs_text
@@ -14,7 +14,7 @@ from hpc_funcs.schedulers.uge.qstat_text import COLUMN_SLOTS, COLUMN_USER
 logger = logging.getLogger(__name__)
 
 
-def get_cluster_usage() -> DataFrame:
+def get_cluster_usage() -> Series:
     """Get cluster usage information, grouped by users
 
     To get totla cores in use `pdf["slots"].sum()`
