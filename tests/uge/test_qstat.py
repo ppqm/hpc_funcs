@@ -2,8 +2,9 @@ import pandas as pd
 import pytest
 from conftest import RESOURCES
 
-from hpc_funcs.schedulers.uge import has_uge, qstat
+from hpc_funcs.schedulers.uge import has_uge
 from hpc_funcs.schedulers.uge.qstat import get_all_jobs_json, get_all_jobs_text
+from hpc_funcs.schedulers.uge.qstat_text import COLUMN_ARRAY, parse_joblist_text
 from hpc_funcs.schedulers.uge.qstat_xml import get_qstat_job_xml, parse_jobinfo_xml
 
 pd.set_option("display.max_columns", None)
@@ -16,16 +17,16 @@ def test_parse_joblist_text():
     with open(filename, "r") as f:
         stdout = f.read()
 
-    list_jobs = qstat.parse_joblist_text(stdout)
+    list_jobs = parse_joblist_text(stdout)
 
     # print(list_jobs)
 
     pdf = pd.DataFrame(list_jobs)
     assert len(pdf)
 
-    print(pdf)
-
-    print(pdf["ja_task_id"])
+    print(COLUMN_ARRAY)
+    print(pdf.columns.tolist())
+    assert COLUMN_ARRAY in pdf
 
     print(pdf)
 
@@ -78,6 +79,8 @@ def test_all():
     df = get_all_jobs_text()
     print(df)
     assert len(df) > 1
+
+    assert COLUMN_ARRAY in df
 
 
 def test_jobid_from_all_text():

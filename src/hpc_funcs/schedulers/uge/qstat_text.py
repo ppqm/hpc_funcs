@@ -1,6 +1,5 @@
 import logging
 import re
-from itertools import pairwise
 from typing import Dict, List, Optional
 
 import pandas as pd
@@ -123,6 +122,13 @@ def parse_joblist_text(stdout: str) -> pd.DataFrame:
     # Find column start positions based on header
     column_positions = {column_name: header_line.find(column_name) for column_name in COLUMNS_TEXT}
 
+    missing = [c for c, pos in column_positions.items() if pos == -1]
+    if missing:
+        raise KeyError(f"Missing expected header(s): {missing}")
+
+    # Ensure columns are processed in left-to-right order in the header
+    ordered_cols = sorted(COLUMNS_TEXT, key=lambda c: column_positions[c])
+
     # TODO assert check if all headers are there
 
     # Process each data line
@@ -134,12 +140,13 @@ def parse_joblist_text(stdout: str) -> pd.DataFrame:
         # We'll use the positions to slice the line
         job = {}
 
-        for start, end in pairwise(COLUMNS_TEXT):
+        for i, col in enumerate(ordered_cols):
 
-            idx_a = column_positions[start] if start else None
-            idx_b = column_positions[end] if end else None
+            start = column_positions[col]
+            end = column_positions[ordered_cols[i + 1]] if i + 1 < len(ordered_cols) else None
+            value = line[start:end].strip()
 
-            job[start] = line[idx_a:idx_b]
+            job[col] = value
 
         jobs.append(job)
 
@@ -217,9 +224,9 @@ def parse_qstat_text(stdout: str) -> pd.DataFrame:
 
 
 def parse_taskarray(pdf: DataFrame) -> pd.DataFrame:
-    col_id = "job-ID"
-    col_state = "state"
-    col_array = "ja-task-ID"
+    col_id = COLUMN_JOBID
+    col_state = COLUMN_STATE
+    col_array = COLUMN_ARRAY
 
     # for unique job-ids
     job_ids = pdf[col_id].unique()
@@ -256,7 +263,7 @@ def parse_taskarray(pdf: DataFrame) -> pd.DataFrame:
         n_error = error_count.values.sum()
 
         row = {
-            "job": job_id,
+            COLUMN_JOBID: job_id,
             "running": n_running,
             "pending": n_pending,
             "error": n_error,
