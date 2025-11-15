@@ -6,7 +6,6 @@ from typing import Dict, List, Optional, Union, Tuple, Any
 import pandas as pd
 from pandas import DataFrame
 
-from hpc_funcs.schedulers.uge.qacct import COL_SPLIT
 from hpc_funcs.shell import execute
 
 from .constants import TAGS_ERROR, TAGS_PENDING, TAGS_RUNNING
@@ -99,7 +98,15 @@ def get_qstat_text(
 
     # Execute command
     logger.debug(f"Executing: {cmd}")
-    stdout, stderr = execute(cmd)
+    process = subprocess.run(
+        cmd,
+        encoding="utf-8",
+        capture_output=True,
+        shell=True,
+    )
+
+    stdout = process.stdout
+    stderr = process.stderr
 
     if stderr:
         logger.warning(f"qstat stderr: {stderr}")
