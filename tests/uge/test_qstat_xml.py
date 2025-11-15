@@ -1,9 +1,5 @@
-
-import pandas as pd
-import pytest
 from conftest import RESOURCES
 
-from hpc_funcs.schedulers.uge import has_uge
 from hpc_funcs.schedulers.uge.qstat_xml import parse_jobinfo_xml
 
 
@@ -38,4 +34,3 @@ def test_parse_jobinfo_xml():
     task = job["JB_ja_tasks"][0]
     assert task["JAT_task_number"] == "1"
     assert task["JAT_status"] == "65536"
-

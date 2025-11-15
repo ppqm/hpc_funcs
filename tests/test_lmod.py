@@ -3,7 +3,7 @@ import os
 import pytest
 from conftest import RESOURCES
 
-from hpce_utils.env import lmod
+from hpc_funcs import lmod
 
 if not lmod.get_lmod_executable():
     pytest.skip("Could not find LMOD executable", allow_module_level=True)
@@ -26,7 +26,7 @@ def test_use() -> None:
     ), "Unable to find loaded module path"
 
 
-def test_load() -> None:
+def test_load_os() -> None:
     lmod.use(MODULE_PATH)
 
     print(os.environ.get("MODULEPATH"))
@@ -51,3 +51,25 @@ def test_load() -> None:
     # modules_loaded = lmod.get_modules()
     # print(modules_loaded)
     # assert MODULE_NAME in list(modules_loaded.values())
+
+
+def test_load_return() -> None:
+
+    lmod.use(MODULE_PATH)
+
+    print(os.environ.get("MODULEPATH"))
+
+    # Check use
+    assert str(MODULE_PATH) in os.environ.get(
+        "MODULEPATH", ""
+    ), "Unable to find loaded module path"
+
+    update_dict = lmod.get_load_environment(MODULE_NAME)
+
+    # Check env is set
+    assert update_dict.get("TESTLMODMODULE") == "THIS IS A TEST"
+
+    # Check path is updated
+    binpaths = update_dict.get("PATH", "").split(":")
+    print(binpaths)
+    assert "/does/not/exist/bin" in binpaths

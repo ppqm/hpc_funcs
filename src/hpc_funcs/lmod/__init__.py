@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from hpce_utils.shell import which
 
-_logger = logging.getLogger("lmod")
+logger = logging.getLogger("lmod")
 
 
 @lru_cache(maxsize=None)
@@ -21,11 +21,11 @@ def get_lmod_executable() -> Optional[Path]:
     # TODO Raise exception if cannot find executable
 
     if exe is None:
-        _logger.error("Could not find LMOD executable in environment")
+        logger.error("Could not find LMOD executable in environment")
         return None
 
     if not which(exe):
-        _logger.error(f"Could not find {exe} executable in environment")
+        logger.error(f"Could not find {exe} executable in environment")
         return None
 
     return exe
@@ -34,14 +34,17 @@ def get_lmod_executable() -> Optional[Path]:
 # pylint: disable=too-many-locals
 def module(
     command: str, arguments: str, cmd: Optional[Path] = get_lmod_executable()
-) -> Optional[str]:
-    """Use lmod to execute enviromental changes"""
+) -> Tuple[Dict[str, str], Optional[str]]:
+    """Use lmod to execute enviromental changes
 
-    _logger.info(f"module {command} {arguments}")
+    returns dictionary of LMOD returns, stderr
+    """
+
+    logger.info(f"module {command} {arguments}")
 
     execution: Any = [cmd, "python", command, arguments]
 
-    _logger.debug(execution)
+    logger.debug(execution)
 
     with subprocess.Popen(
         execution,
@@ -112,26 +115,29 @@ def module(
 
     environment_update = dict(keyvalues)
 
-    pythonpath = environment_update.get("PYTHONPATH", None)
+    return environment_update, stderr
 
-    if pythonpath is not None:
 
-        pythonpaths = pythonpath.split(":")
+def update_environment(update_dict: Dict[str, str]) -> None:
 
-        for path in pythonpaths:
+    pythonpath = update_dict.get("PYTHONPATH", None)
 
-            if path in sys.path:
-                continue
+    os.environ.update(update_dict)
 
-            sys.path.append(path)
+    for key, value in update_dict.items():
+        logger.debug(f"{key} = {value}")
 
-    # update
-    os.environ.update(environment_update)
+    if pythonpath is None:
+        return
 
-    for key, value in environment_update.items():
-        _logger.debug(f"{key} = {value}")
+    pythonpaths = pythonpath.split(":")
 
-    return stderr
+    for path in pythonpaths:
+        if path in sys.path:
+            continue
+        sys.path.append(path)
+
+    return
 
 
 def purge() -> None:
@@ -142,12 +148,20 @@ def purge() -> None:
 
 def load(module_name: str) -> None:
     """use `module load` to overload your environment"""
-    module("load", module_name)
+    update_dict, _ = module("load", module_name)
+    update_environment(update_dict)
+
+
+def get_load_environment(module_name: str) -> Dict[str, str]:
+    """use `module load` to overload your environment"""
+    update_dict, _ = module("load", module_name)
+    return update_dict
 
 
 def use(path: Optional[Path]) -> None:
     """Use path in MODULEPATH"""
-    module("use", str(path))
+    update_dict, _ = module("use", str(path))
+    update_environment(update_dict)
 
 
 def get_modules() -> Dict[int, str]:
@@ -160,7 +174,7 @@ def get_modules() -> Dict[int, str]:
 
     """
 
-    stderr = module("list", "")
+    _, stderr = module("list", "")
 
     assert stderr is not None
 

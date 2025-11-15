@@ -7,6 +7,8 @@ from hpce_utils.files import generate_name
 
 logger = logging.getLogger(__name__)
 
+# TODO Support for sync -y
+
 
 # pylint: disable=dangerous-default-value
 def submit_script(
@@ -82,31 +84,3 @@ def submit_script(
     logger.info(f"got job_id: {uge_id}")
 
     return uge_id, scr / filename
-
-
-def generate_command(sync: bool = False, export: bool = False) -> str:
-    """Generate UGE/SGE submit command with approriate flags
-
-    export:
-       Available for qsub, qsh, qrsh, qlogin and qalter.
-       Specifies that all environment variables active within the qsub utility
-       be exported to the context  of  the job.
-
-    sync:
-       Available for qsub.
-       wait for the job to complete before exiting. If the job completes
-       successfully, qsub's exit code will be that of the completed job.
-
-    """
-
-    qrsh = constants.command_submit
-
-    cmd = [qrsh]
-
-    if sync:
-        cmd.append(constants.flag_sync)
-
-    if export:
-        cmd.append(constants.flag_environment_export)
-
-    return " ".join(cmd)

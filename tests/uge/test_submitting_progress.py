@@ -15,7 +15,6 @@ def test_array_progressbar(global_tmp_path: Path):
     tmp_path = global_tmp_path
 
     # Generate bash script
-    success_string = "finished work"
     command = f'sleep {TASK_ENVIRONMENT_VARIABLE}0"'  # Sleep for 10, 20, 30 etc
     log_dir = tmp_path / "uge_testlogs"
 
@@ -24,8 +23,8 @@ def test_array_progressbar(global_tmp_path: Path):
         cwd=tmp_path,
         log_dir=log_dir,
         name="TestJob",
-        task_concurrent=1,
-        task_stop=2,
+        task_concurrent=2,
+        task_stop=3,
     )
     print(script)
     assert command in script

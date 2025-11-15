@@ -1,11 +1,14 @@
 import pandas as pd
 import pytest
-from conftest import RESOURCES
 
 from hpc_funcs.schedulers.uge import has_uge
 from hpc_funcs.schedulers.uge.qstat import get_all_jobs_json, get_all_jobs_text
-from hpc_funcs.schedulers.uge.qstat_text import COLUMN_ARRAY, COLUMN_JOBID, get_qstat_job_text, COLUMN_INFO_USER
-from hpc_funcs.schedulers.uge.qstat_xml import get_qstat_job_xml, parse_jobinfo_xml
+from hpc_funcs.schedulers.uge.qstat_text import (
+    COLUMN_ARRAY,
+    COLUMN_INFO_USER,
+    COLUMN_JOBID,
+    get_qstat_job_text,
+)
 
 pd.set_option("display.max_columns", None)
 

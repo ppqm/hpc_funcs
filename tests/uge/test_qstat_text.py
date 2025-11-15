@@ -1,11 +1,18 @@
 import pandas as pd
-import pytest
 from conftest import RESOURCES
 
-from hpc_funcs.schedulers.uge import has_uge
-from hpc_funcs.schedulers.uge.qstat_text import parse_joblist_text, parse_jobinfo_text, COLUMN_INFO_JOBID, COLUMN_INFO_NAME, COLUMN_INFO_USER, COLUMN_INFO_ARRAY, COLUMN_ARRAY
+from hpc_funcs.schedulers.uge.qstat_text import (
+    COLUMN_ARRAY,
+    COLUMN_INFO_ARRAY,
+    COLUMN_INFO_JOBID,
+    COLUMN_INFO_NAME,
+    COLUMN_INFO_USER,
+    parse_jobinfo_text,
+    parse_joblist_text,
+)
 
 pd.set_option("display.max_columns", None)
+
 
 def test_parse_jobinfo():
 
@@ -51,4 +58,3 @@ def test_parse_joblist():
     assert COLUMN_ARRAY in pdf
 
     print(pdf)
-

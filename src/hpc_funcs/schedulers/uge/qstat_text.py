@@ -1,12 +1,10 @@
 import logging
 import re
 import subprocess
-from typing import Dict, List, Optional, Union, Tuple, Any
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import pandas as pd
 from pandas import DataFrame
-
-from hpc_funcs.shell import execute
 
 from .constants import TAGS_ERROR, TAGS_PENDING, TAGS_RUNNING
 
@@ -49,6 +47,7 @@ COLUMN_INFO_USER = "owner"
 COLUMN_INFO_ARRAY = "job-array tasks"
 COLUMN_INFO_CONCURRENCY = "task_concurrency"
 COLUMN_INFO_NAME = "job_name"
+
 
 def get_qstat_text(
     users: Optional[List[str]] = None,
@@ -180,7 +179,6 @@ def get_qstat_job_text(
     return jobs, errors
 
 
-
 def parse_joblist_text(stdout: str) -> pd.DataFrame:
     """
     Parse UGE qstat text output (list format).
@@ -250,7 +248,7 @@ def parse_jobinfo_text(stdout: str) -> List[Dict[str, str]]:
     lines = stdout.split("\n")
 
     for line in lines:
-        if "="*5 in line:
+        if "=" * 5 in line:
             if len(output[-1]) > 1:
                 output += [dict()]
             continue

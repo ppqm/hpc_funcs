@@ -1,9 +1,10 @@
-from pandas import DataFrame
-import pandas as pd
 import copy
 import logging
 import time
 from typing import Any, Dict, Iterator, List
+
+import pandas as pd
+from pandas import DataFrame
 
 from hpc_funcs.schedulers.uge.constants import TAGS_RUNNING
 from hpc_funcs.schedulers.uge.qstat import get_all_jobs_text
@@ -11,6 +12,7 @@ from hpc_funcs.schedulers.uge.qstat_json import get_qstat_job_json
 from hpc_funcs.schedulers.uge.qstat_text import COLUMN_SLOTS, COLUMN_USER
 
 logger = logging.getLogger(__name__)
+
 
 def get_cluster_usage() -> DataFrame:
     """Get cluster usage information, grouped by users
@@ -59,7 +61,7 @@ def wait_for_jobs(jobs: List[str], sleep: int = 60) -> Iterator[str]:
 
     end_time = time.time()
     diff_time = end_time - start_time
-    logger.info(f"All jobs finished and took {diff_time/60/60:.2f}h")
+    logger.info(f"All jobs finished and took {diff_time / 60 / 60 :.2f}h")
 
 
 def is_job_done(
