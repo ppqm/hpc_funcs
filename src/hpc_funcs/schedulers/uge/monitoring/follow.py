@@ -6,7 +6,13 @@ from typing import Dict
 import tqdm
 from pandas import DataFrame
 
-from hpc_funcs.schedulers.uge.qstat_text import COLUMN_ERROR, COLUMN_JOBID, COLUMN_PENDING, COLUMN_RUNNING, parse_taskarray
+from hpc_funcs.schedulers.uge.qstat_text import (
+    COLUMN_ERROR,
+    COLUMN_JOBID,
+    COLUMN_PENDING,
+    COLUMN_RUNNING,
+    parse_taskarray,
+)
 
 from ..qstat import get_all_jobs_text
 from ..qstat_xml import get_qstat_job_xml
@@ -94,7 +100,9 @@ class TaskarrayProgress:
 
         # Get status
         assert joblist is not None
-        row = joblist.loc[joblist[COLUMN_JOBID] == self.job_id, [COLUMN_RUNNING, COLUMN_PENDING, COLUMN_ERROR]]
+        row = joblist.loc[
+            joblist[COLUMN_JOBID] == self.job_id, [COLUMN_RUNNING, COLUMN_PENDING, COLUMN_ERROR]
+        ]
 
         if row.empty:
             n_running = 0

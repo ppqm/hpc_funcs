@@ -1,29 +1,34 @@
-# def get_cluster_usage() -> DataFrame:
-#     """Get cluster usage information, grouped by users
-
-#     To get totla cores in use `pdf["slots"].sum()`
-#     """
-
-#     stdout, _ = execute("qstat -u \\*")  # noqa: W605
-#     pdf = parse_qstat(stdout)
-
-#     # filter to running
-#     pdf = pdf[pdf.state.isin(running_tags)]
-
-#     counts = pdf.groupby(["user"])["slots"].agg("sum")
-#     counts = counts.sort_values()  # type: ignore
-
-#     return counts
-
+from pandas import DataFrame
+import pandas as pd
 import copy
 import logging
 import time
 from typing import Any, Dict, Iterator, List
 
+from hpc_funcs.schedulers.uge.constants import TAGS_RUNNING
+from hpc_funcs.schedulers.uge.qstat import get_all_jobs_text
+from hpc_funcs.schedulers.uge.qstat_json import get_qstat_job_json
+from hpc_funcs.schedulers.uge.qstat_text import COLUMN_SLOTS, COLUMN_USER
+
 logger = logging.getLogger(__name__)
 
-from hpc_funcs.schedulers.uge.constants import TAGS_PENDING, TAGS_RUNNING
-from hpc_funcs.schedulers.uge.qstat_json import get_qstat_job_json
+def get_cluster_usage() -> DataFrame:
+    """Get cluster usage information, grouped by users
+
+    To get totla cores in use `pdf["slots"].sum()`
+    """
+
+    pdf = get_all_jobs_text()
+
+    # filter to running
+    pdf = pdf[pdf.state.isin(TAGS_RUNNING)]
+
+    pdf[COLUMN_SLOTS] = pdf[COLUMN_SLOTS].astype("int64")
+
+    counts = pdf.groupby([COLUMN_USER])[COLUMN_SLOTS].agg("sum")
+    counts = counts.sort_values()  # type: ignore
+
+    return counts
 
 
 def wait_for_jobs(jobs: List[str], sleep: int = 60) -> Iterator[str]:

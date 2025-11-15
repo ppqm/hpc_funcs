@@ -1,4 +1,3 @@
-
 # Task-array qstat ouput columns
 COLUMN_JOB = "job"
 COLUMN_JOB_ID = "job_number"

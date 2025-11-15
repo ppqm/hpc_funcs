@@ -7,7 +7,7 @@ from pandas import DataFrame
 
 from hpc_funcs.shell import execute
 
-from .constants import COLUMN_JOB, TAGS_ERROR, TAGS_PENDING, TAGS_RUNNING
+from .constants import TAGS_ERROR, TAGS_PENDING, TAGS_RUNNING
 
 logger = logging.getLogger(__name__)
 

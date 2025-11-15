@@ -9,6 +9,7 @@ from ..constants import UGE_ENVIRONMENT_VARIABLES
 
 COMMAND_SUBMIT = "qsub"
 
+
 def has_uge() -> bool:
     """Check if cluster has UGE setup"""
 

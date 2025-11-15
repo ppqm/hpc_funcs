@@ -18,6 +18,9 @@ First version should be able to
 - [ ] script in test/resources/uge to generate example output files (don't use jq)
 - [ ] can json load support, if name exist already create a new?
 
+- [ ] Tests
+- [ ] types
+
 - [ ] Check molpipe usage
 - [ ] Check molpipejob usage
 
