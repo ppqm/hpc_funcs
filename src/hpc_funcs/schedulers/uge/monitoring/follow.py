@@ -62,14 +62,12 @@ class TaskarrayProgress:
         time_start = datetime.datetime.fromtimestamp(int(timestamp) / 1000)
         time_start = time.mktime(time_start.timetuple())
 
-        print("time start", time_start)
-
         job_array_info = job_info.get("JB_ja_structure", [])
         assert len(job_array_info)
 
-        job_array_start = int(job_array_info[0].get("RN_min", 1))
+        # job_array_start = int(job_array_info[0].get("RN_min", 1))
         job_array_stop = int(job_array_info[0].get("RN_max", 1))
-        job_array_concurrent = int(job_array_info[0].get("RN_step", 1))
+        # job_array_concurrent = int(job_array_info[0].get("RN_step", 1))
 
         self.n_total = job_array_stop
 
@@ -92,14 +90,10 @@ class TaskarrayProgress:
 
         if joblist is None:
             joblist = get_all_jobs_text()
-            print(joblist)
-
             joblist = parse_taskarray(joblist)
 
         # Get status
         assert joblist is not None
-        status = joblist[joblist[COLUMN_JOBID] == self.job_id]
-
         row = joblist.loc[joblist[COLUMN_JOBID] == self.job_id, ["running", "pending", "error"]]
 
         if row.empty:

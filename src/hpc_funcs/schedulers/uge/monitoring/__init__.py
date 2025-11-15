@@ -35,14 +35,10 @@ def wait_for_jobs(jobs: List[str], sleep: int = 60) -> Iterator[str]:
 
     jobs = copy.deepcopy(jobs)
 
-    print(jobs)
-
     while len(jobs):
         logger.info(
             f"... and breathe for {sleep} sec, still waiting for {len(jobs)} job(s) to finish..."
         )
-
-        print("okay", sleep)
 
         time.sleep(sleep)
 
