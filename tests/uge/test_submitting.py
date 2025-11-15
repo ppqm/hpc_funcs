@@ -7,7 +7,7 @@ from hpc_funcs.schedulers.uge.constants import TASK_ENVIRONMENT_VARIABLE
 from hpc_funcs.schedulers.uge.monitoring import wait_for_jobs
 from hpc_funcs.schedulers.uge.qacct import get_job_accounting
 from hpc_funcs.schedulers.uge.qdel import delete_job
-from hpc_funcs.schedulers.uge.qstat import get_qstat_job
+from hpc_funcs.schedulers.uge.qstat_text import get_qstat_job_text
 from hpc_funcs.schedulers.uge.qsub import submit_script
 from hpc_funcs.schedulers.uge.submission import (
     generate_single_script,
@@ -222,7 +222,7 @@ def test_failed_uge_submit(tmp_path: Path, caplog):
     assert job_id is not None
     print(job_id)
 
-    job_info, job_errors = get_qstat_job(job_id)
+    job_info, job_errors = get_qstat_job_text(job_id)
 
     assert len(job_errors) >= 1
 

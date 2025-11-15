@@ -1,6 +1,6 @@
 import pandas as pd
 import pytest
-from pandas import DataFrame
+from pandas import Series
 
 from hpc_funcs.schedulers.uge import has_uge
 from hpc_funcs.schedulers.uge.monitoring import get_cluster_usage
@@ -15,6 +15,6 @@ def test_cluster_usage():
 
     pdf_counts = get_cluster_usage()
 
-    assert isinstance(pdf_counts, DataFrame)
+    assert isinstance(pdf_counts, Series)
 
     return
