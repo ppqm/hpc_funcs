@@ -1,5 +1,5 @@
 import pandas as pd
-from conftest import RESOURCES
+from conftest import RESOURCES  # type: ignore
 
 from hpc_funcs.schedulers.uge import qacct
 
