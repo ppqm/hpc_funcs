@@ -1,5 +1,5 @@
 import pandas as pd
-from conftest import RESOURCES
+from conftest import RESOURCES  # type: ignore
 
 from hpc_funcs.schedulers.uge.qstat_text import (
     COLUMN_ARRAY,
@@ -16,7 +16,7 @@ pd.set_option("display.max_columns", None)
 
 def test_parse_jobinfo():
 
-    filename = RESOURCES / "uge" / "qstat_jobinfo_pending.txt"
+    filename = RESOURCES / "uge" / "qstat_jobinfo_array.txt"
 
     with open(filename, "r") as f:
         stdout = f.read()
@@ -31,9 +31,9 @@ def test_parse_jobinfo():
     job = jobs[0]
 
     # Test basic fields
-    assert job[COLUMN_INFO_JOBID] == "29903814"
+    assert job[COLUMN_INFO_JOBID] == "30017751"
     assert job[COLUMN_INFO_NAME] == "TestJob"
-    assert job[COLUMN_INFO_USER] == "kromaji1"
+    assert job[COLUMN_INFO_USER] == "user01"
 
     # Test job array structure
     assert job[COLUMN_INFO_ARRAY]
@@ -41,7 +41,7 @@ def test_parse_jobinfo():
 
 def test_parse_joblist():
 
-    filename = RESOURCES / "uge/qstat_list.txt"
+    filename = RESOURCES / "uge/qstat_joblist.txt"
 
     with open(filename, "r") as f:
         stdout = f.read()

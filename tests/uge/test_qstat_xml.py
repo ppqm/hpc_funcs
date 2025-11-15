@@ -1,4 +1,4 @@
-from conftest import RESOURCES
+from conftest import RESOURCES  # type: ignore
 
 from hpc_funcs.schedulers.uge.qstat_xml import parse_jobinfo_xml
 
@@ -6,7 +6,7 @@ from hpc_funcs.schedulers.uge.qstat_xml import parse_jobinfo_xml
 def test_parse_jobinfo_xml():
     """Test parsing of qstat -j -xml -nenv output."""
 
-    filename = RESOURCES / "uge" / "qstat_jobinfo_pending.xml"
+    filename = RESOURCES / "uge" / "qstat_jobinfo_array.xml"
 
     with open(filename, "r") as f:
         xml_str = f.read()
@@ -19,9 +19,9 @@ def test_parse_jobinfo_xml():
     job = jobs[0]
 
     # Test basic fields
-    assert job["JB_job_number"] == "29903814"
+    assert job["JB_job_number"] == "30017751"
     assert job["JB_job_name"] == "TestJob"
-    assert job["JB_owner"] == "kromaji1"
+    assert job["JB_owner"] == "user01"
 
     # Test job array structure
     assert len(job["JB_ja_structure"]) == 1
