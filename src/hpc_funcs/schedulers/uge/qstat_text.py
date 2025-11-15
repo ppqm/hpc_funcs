@@ -1,16 +1,19 @@
 import logging
 import re
-from typing import Dict, List, Optional
+import subprocess
+from typing import Dict, List, Optional, Union, Tuple, Any
 
 import pandas as pd
 from pandas import DataFrame
 
+from hpc_funcs.schedulers.uge.qacct import COL_SPLIT
 from hpc_funcs.shell import execute
 
 from .constants import TAGS_ERROR, TAGS_PENDING, TAGS_RUNNING
 
 logger = logging.getLogger(__name__)
 
+# Joblist columns
 COLUMN_JOBID = "job-ID"
 COLUMN_PRIORITY = "prior"
 COLUMN_NAME = "name"
@@ -21,11 +24,6 @@ COLUMN_QUEUE = "queue"
 COLUMN_JCLASS = "jclass"
 COLUMN_SLOTS = "slots"
 COLUMN_ARRAY = "ja-task-ID"
-
-# Summary table
-COLUMN_RUNNING = "running"
-COLUMN_PENDING = "pending"
-COLUMN_ERROR = "error"
 
 # Ordered qstat text joblist columns
 COLUMNS_TEXT = [
@@ -41,6 +39,17 @@ COLUMNS_TEXT = [
     COLUMN_ARRAY,
 ]
 
+# joblist summary table columns
+COLUMN_RUNNING = "running"
+COLUMN_PENDING = "pending"
+COLUMN_ERROR = "error"
+
+# jobinfo columns
+COLUMN_INFO_JOBID = "job_number"
+COLUMN_INFO_USER = "owner"
+COLUMN_INFO_ARRAY = "job-array tasks"
+COLUMN_INFO_CONCURRENCY = "task_concurrency"
+COLUMN_INFO_NAME = "job_name"
 
 def get_qstat_text(
     users: Optional[List[str]] = None,
@@ -101,6 +110,70 @@ def get_qstat_text(
     return df
 
 
+def get_qstat_job_text(
+    job_id: Union[str, int],
+) -> Tuple[List[Dict[str, Any]], List[str]]:
+    """Get detailed information for a specific job using qstat -j -xml.
+
+    This returns comprehensive information about a single job, including
+    resource requests, submission details, and task status in XML format,
+    which is then parsed into a Python dictionary.
+
+    Args:
+        job_id: The job ID to query.
+
+    Returns:
+        Tuple containing:
+            - List of dictionaries with detailed job information (typically one job)
+            - List of error messages (if any)
+
+    Examples:
+        >>> # Get detailed info for a specific job
+        >>> jobs, errors = get_qstat_job_xml(12345)
+        >>> if jobs:
+        ...     job = jobs[0]
+        ...     print(job["JB_job_name"])
+        ...     print(job["JB_owner"])
+    """
+
+    cmd = f"qstat -j {job_id} -nenv"
+
+    logger.debug(f"Executing: {cmd}")
+
+    process = subprocess.run(
+        cmd,
+        encoding="utf-8",
+        capture_output=True,
+        shell=True,
+    )
+
+    stdout = process.stdout
+    stderr = process.stderr
+
+    if stderr:
+        logger.warning(f"qstat stderr: {stderr}")
+
+    # Parse error lines that might appear before XML
+    lines = stdout.splitlines()
+    errors = []
+    xml_lines = []
+
+    for line in lines:
+        if line.startswith("error reason"):
+            errors.append(line)
+        else:
+            xml_lines.append(line)
+
+    del lines
+    stdout = "\n".join(xml_lines)
+
+    # Parse the XML
+    jobs = parse_jobinfo_text(stdout)
+
+    return jobs, errors
+
+
+
 def parse_joblist_text(stdout: str) -> pd.DataFrame:
     """
     Parse UGE qstat text output (list format).
@@ -135,8 +208,6 @@ def parse_joblist_text(stdout: str) -> pd.DataFrame:
     # Ensure columns are processed in left-to-right order in the header
     ordered_cols = sorted(COLUMNS_TEXT, key=lambda c: column_positions[c])
 
-    # TODO assert check if all headers are there
-
     # Process each data line
     for line in lines[2:]:
         if not line.strip():
@@ -159,25 +230,30 @@ def parse_joblist_text(stdout: str) -> pd.DataFrame:
     return pd.DataFrame(jobs)
 
 
-def parse_text_jobinfo(stdout: str) -> List[Dict[str, str]]:
+def parse_jobinfo_text(stdout: str) -> List[Dict[str, str]]:
     """
     Output is column-length based and sections split by "=".
     Returns list key-value dict per section.
     """
+
+    COL_VALUE_START = 28
 
     output: List[Dict[str, str]] = [dict()]
 
     lines = stdout.split("\n")
 
     for line in lines:
-        if "===========" in line:
+        if "="*5 in line:
             if len(output[-1]) > 1:
                 output += [dict()]
             continue
 
         # Format: pe_taskid     NONE
-        key = line[:COL_SPLIT].strip()
-        value = line[COL_SPLIT:].strip()
+        key = line[:COL_VALUE_START].strip()
+        value = line[COL_VALUE_START:].strip()
+
+        if key.endswith(":"):
+            key = key[:-1]
 
         if len(key) == 0:
             continue

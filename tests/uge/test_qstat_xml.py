@@ -1,0 +1,41 @@
+
+import pandas as pd
+import pytest
+from conftest import RESOURCES
+
+from hpc_funcs.schedulers.uge import has_uge
+from hpc_funcs.schedulers.uge.qstat_xml import parse_jobinfo_xml
+
+
+def test_parse_jobinfo_xml():
+    """Test parsing of qstat -j -xml -nenv output."""
+
+    filename = RESOURCES / "uge" / "qstat_jobinfo_pending.xml"
+
+    with open(filename, "r") as f:
+        xml_str = f.read()
+
+    jobs = parse_jobinfo_xml(xml_str)
+
+    # Should parse exactly one job
+    assert len(jobs) == 1
+
+    job = jobs[0]
+
+    # Test basic fields
+    assert job["JB_job_number"] == "29903814"
+    assert job["JB_job_name"] == "TestJob"
+    assert job["JB_owner"] == "kromaji1"
+
+    # Test job array structure
+    assert len(job["JB_ja_structure"]) == 1
+    assert job["JB_ja_structure"][0]["RN_min"] == "1"
+    assert job["JB_ja_structure"][0]["RN_max"] == "2"
+    assert job["JB_ja_structure"][0]["RN_step"] == "1"
+
+    # Test job array tasks
+    assert len(job["JB_ja_tasks"]) == 1
+    task = job["JB_ja_tasks"][0]
+    assert task["JAT_task_number"] == "1"
+    assert task["JAT_status"] == "65536"
+
