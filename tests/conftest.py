@@ -17,16 +17,16 @@ def global_tmp_path() -> Generator[Path, None, None]:
     Home is a globally mounted directory and therefore safe for distributed scheduler usage.
     """
 
-    global_scratch = os.environ.get("GLOBAL_SCRATCH", None)
+    global_scratch_str = os.environ.get("GLOBAL_SCRATCH", None)
 
-    if global_scratch is None:
-        global_scratch = Path.home() / "tmp"
+    if global_scratch_str is None:
+        global_scratch_str = str(Path.home() / "tmp")
 
-    global_scratch = Path(global_scratch)
+    global_scratch_path = Path(global_scratch_str)
 
     random_name = next(tempfile._get_candidate_names())  # type: ignore[attr-defined]
 
-    tmp_path = global_scratch / f"pytest_{random_name}"
+    tmp_path = global_scratch_path / f"pytest_{random_name}"
     tmp_path.mkdir(parents=True, exist_ok=True)
 
     yield tmp_path
