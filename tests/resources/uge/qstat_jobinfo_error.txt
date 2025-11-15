@@ -1,0 +1,49 @@
+==============================================================
+job_number:                 30017756
+jclass:                     NONE
+exec_file:                  job_scripts/30017756
+submission_time:            11/15/2025 16:03:48.233
+owner:                      user01
+uid:                        94281059
+group:                      user01
+gid:                        94281059
+supplementary group:        group1, user01, group2, group3, group4, group5, group6, group7, group8, group9, group10
+account:                    sge
+cwd:                        /home/user01/dev/hpc_env/hpce_utils-github.git/tests/resources/uge/examples
+stderr_path_list:           NONE:NONE:/log/dir/does/not/exist
+hard_resource_list:         h_rt=25200,image_upgrade=2025.q3,m_mem_free=4G,machineOSRelease=8,slot_limitA=1
+mail_list:                  user01@node-8.example.com
+notify:                     FALSE
+job_name:                   TestJob
+stdout_path_list:           NONE:NONE:/log/dir/does/not/exist
+priority:                   0
+jobshare:                   0
+script_file:                tmp_uge.vr636hhp.sh
+parallel environment:       smp range: 1
+department:                 dept_generic
+job-array tasks:            1-2:1
+task_concurrency:           1
+binding:                    NONE
+mbind:                      NONE
+submit_cmd:                 qsub tmp_uge.vr636hhp.sh
+category_id:                42164
+pending_tasks:              2
+request_dispatch_info:      FALSE
+start_time            1:    01/01/1970 01:00:00.000
+job_state             1:    Eqw
+gpu_usage             1:    NONE
+cgroups_usage         1:    NONE
+error reason    1:          11/15/2025 16:03:54 [94281059:2989795]: can't make directory "/log/dir/does/not" as stdout_path: Permission denied KRB5CCNAME=none uid=0 gid=0 
+scheduling info:            queue instance "default.q@node-0.example.com" dropped because it is temporarily not available
+                            queue instance "default.q@node-310055.example.com" dropped because host slots are full (similar reason #1)
+                            queue instance "default.q@node-310054.example.com" dropped because host slots are full (similar reason #2)
+                            queue instance "default.q@node-410071.example.com" dropped because host slots are full (similar reason #3)
+                            queue instance "default.q@node-410070.example.com" dropped because host slots are full (similar reason #4)
+                            queue instance "default.q@node-510001.example.com" dropped because host slots are full (similar reason #5)
+                            queue instance "default.q@node-310056.example.com" dropped because it is disabled (similar reason #1)
+                            queue instance "default.q@node-310057.example.com" dropped because it is disabled (similar reason #2)
+                            queue instance "default.q@node-310058.example.com" dropped because it is disabled (similar reason #3)
+                            queue instance "default.q@node-0.example.com" dropped because it is disabled (similar reason #4)
+                            queue instance "default.q@node-310059.example.com" dropped because it is disabled (similar reason #5)
+                            queue instance "default.q@node-310060.example.com" dropped because it is disabled (similar reason #6)
+                            not all array task may be started due to 'max_aj_instances'
