@@ -77,6 +77,12 @@ def generate_errorjob_log(global_tmp_path: Path):
     delete_job(job_id)
 
 
+def generate_joblists():
+    execute(f"qstat -u '*' > {tmp_path}/qstat_joblist.txt")
+    execute(f"qstat -u '*' -xml > {tmp_path}/qstat_joblist.xml")
+    execute(f"qstat -u '*' -json > {tmp_path}/qstat_joblist.json")
+
+
 if __name__ == "__main__":
 
     tmp_path = Path("./examples")
@@ -84,3 +90,4 @@ if __name__ == "__main__":
 
     generate_taskarray_log(tmp_path)
     generate_errorjob_log(tmp_path)
+    generate_joblists()
