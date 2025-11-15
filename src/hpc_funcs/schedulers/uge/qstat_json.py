@@ -133,7 +133,7 @@ def parse_jobinfo_json(stdout: str):
     if "job_info" not in data:
         return [], errors
 
-    rows = data["jobinfo"]
+    rows = data["job_info"]
 
     return rows, errors
 
