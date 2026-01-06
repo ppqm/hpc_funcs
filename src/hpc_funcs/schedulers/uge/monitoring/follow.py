@@ -15,7 +15,7 @@ from hpc_funcs.schedulers.uge.qstat_text import (
 )
 
 from ..qstat import get_all_jobs_text
-from ..qstat_xml import get_qstat_job_xml
+from ..qstat_text import get_qstat_job_text
 
 DATE_FORMAT = "%m/%d/%Y %H:%M:%S"
 TQDM_LENGTH = 95
@@ -38,7 +38,7 @@ class TaskarrayProgress:
     def by_jobid(job_id: str, position: int = 0, file=None):
 
         job_id = str(job_id)
-        job_infos, job_errors = get_qstat_job_xml(job_id)
+        job_infos, _ = get_qstat_job_text(job_id)
         assert len(job_infos)
         job_info = job_infos[0]
 
@@ -55,25 +55,47 @@ class TaskarrayProgress:
         self.job_id: str
         self.init_bar(job_info, {})
 
+    @staticmethod
+    def _read_time(timestamp):
+        time_start = datetime.datetime.fromtimestamp(int(timestamp) / 1000)
+        time_start = time.mktime(time_start.timetuple())
+        return time_start
+
     def init_bar(self, job_info: dict, job_status: dict) -> None:
 
-        job_id = job_info.get("JB_job_number")
+        is_xml = job_info.get("JB_ja_structure", None) is not None
+        is_json = job_info.get("submission_time", None) is not None
+        # is_text = not is_xml and not is_json
+
+        job_id = (
+            job_info.get("job_number")
+            or job_info.get("JB_job_number")
+            or job_info.get(COLUMN_JOBID)
+        )
+
         assert job_id is not None
         self.job_id = job_id
 
-        timestamp = job_info.get(
-            "JB_submission_time"
-        )  # in UNIX timestamp, but with too many digits
+        # TODO Move submission_time to constant from format
+
+        timestamp: str = job_info.get("submission_time") if is_json else job_info.get("JB_submission_time")  # type: ignore
         assert timestamp is not None
-        time_start = datetime.datetime.fromtimestamp(int(timestamp) / 1000)
-        time_start = time.mktime(time_start.timetuple())
+        time_start = get_time_from_ugestr(timestamp) if is_json else self._read_time(timestamp)
 
-        job_array_info = job_info.get("JB_ja_structure", [])
-        assert len(job_array_info)
-
-        # job_array_start = int(job_array_info[0].get("RN_min", 1))
-        job_array_stop = int(job_array_info[0].get("RN_max", 1))
-        # job_array_concurrent = int(job_array_info[0].get("RN_step", 1))
+        # Handle both XML format (JB_ja_structure) and text format (job-array tasks)
+        if is_xml:
+            # XML format: list of dicts with RN_min, RN_max, RN_step
+            job_array_info = job_info.get("JB_ja_structure")
+            assert job_array_info is not None
+            job_array_stop = int(job_array_info[0].get("RN_max", 1))
+        else:
+            # Text format: "start-stop:step" string like "1-2:1"
+            job_array_str = job_info.get("job-array tasks")
+            assert job_array_str is not None
+            # Parse "1-2:1" format
+            parts = job_array_str.split(":")
+            range_parts = parts[0].split("-")
+            job_array_stop = int(range_parts[1]) if len(range_parts) > 1 else int(range_parts[0])
 
         self.n_total = job_array_stop
 
@@ -104,13 +126,18 @@ class TaskarrayProgress:
             joblist[COLUMN_JOBID] == self.job_id, [COLUMN_RUNNING, COLUMN_PENDING, COLUMN_ERROR]
         ]
 
+        n_running: int
+        n_pending: int
+        n_error: int
+        n_finished: int
+
         if row.empty:
             n_running = 0
             n_pending = 0
             n_error = 0
             n_finished = self.n_total
         else:
-            n_running, n_pending, n_error = row.iloc[0].to_numpy()
+            n_running, n_pending, n_error = row.iloc[0].to_numpy()  # type: ignore
             n_finished = self.n_total - n_pending - n_running
 
         postfix = dict()

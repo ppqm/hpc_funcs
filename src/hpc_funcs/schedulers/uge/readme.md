@@ -15,11 +15,11 @@ First version should be able to
 - [x] delete job
 - [x] failed jobs exit_codes
 - [x] get cluster information
-- [ ] script in test/resources/uge to generate example output files (don't use jq)
+- [x] script in test/resources/uge to generate example output files (don't use jq)
 - [ ] can json load support, if name exist already create a new?
 
-- [ ] Tests
-- [ ] types
+- [x] Tests
+- [x] types
 
 - [ ] Check molpipe usage
 - [ ] Check molpipejob usage

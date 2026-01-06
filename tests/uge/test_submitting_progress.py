@@ -48,6 +48,7 @@ def test_array_progressbar(global_tmp_path: Path):
         print(f"finished jobid {fjob_id}")
 
     progress_bar.update()
+
     meter = buf.getvalue()
     print(meter)
     assert job_id in meter

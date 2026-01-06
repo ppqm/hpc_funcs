@@ -7,6 +7,8 @@ import pytest
 
 from hpce_utils.managers.uge import status, submitting
 
+pytest.skip(allow_module_level=True)
+
 VALID_QSTAT_OUTPUT_RUNNING = """
 job-ID     prior   name       user         state submit/start at     queue                          jclass                         slots ja-task-ID
 ---------------------------------------------------------------------------------

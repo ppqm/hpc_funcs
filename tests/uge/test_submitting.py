@@ -59,6 +59,9 @@ def test_single(global_tmp_path: Path):
 
     assert finished_job_id is not None
 
+    # Wait for UGE to flush output files to disk and for network filesystem to sync
+    time.sleep(20)
+
     stdout, stderr = read_logfiles(log_dir, finished_job_id, ignore_stdout=False, filter_lmod=True)
 
     assert log_dir.is_dir(), "Something wrong with the network drive"
@@ -112,6 +115,9 @@ def test_taskarray(global_tmp_path: Path):
         finished_job_id = fjob_id
 
     assert finished_job_id is not None
+
+    # Wait for UGE to flush output files to disk and for network filesystem to sync
+    time.sleep(20)
 
     stdout, stderr = read_logfiles(log_dir, finished_job_id, ignore_stdout=False, filter_lmod=True)
 
@@ -171,7 +177,7 @@ def test_failed_command(global_tmp_path: Path):
         assert finished_job_id is not None
 
     # Parse results
-    time.sleep(5)  # Wait for UGE to collect the result
+    time.sleep(30)  # Wait for UGE to collect the accounting result for all tasks
 
     # Overview of the tasks
     accounting = get_job_accounting(job_id)
@@ -192,7 +198,7 @@ def test_failed_command(global_tmp_path: Path):
     assert len(stderr) == 1
 
 
-def test_failed_uge_submit(tmp_path: Path, caplog):
+def test_failed_uge_submit(tmp_path: Path):
     """
     test failed job where uge cannot write to the log folder
     Expect the error to be in the uge logger
@@ -217,7 +223,8 @@ def test_failed_uge_submit(tmp_path: Path, caplog):
         scr=tmp_path,
     )
 
-    time.sleep(10)
+    # Wait for UGE to attempt to run the job and report the error
+    time.sleep(20)
 
     assert job_id is not None
     print(job_id)

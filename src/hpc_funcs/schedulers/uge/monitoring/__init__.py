@@ -67,9 +67,7 @@ def wait_for_jobs(jobs: List[str], sleep: int = 60) -> Iterator[str]:
 def is_job_done(
     job_id: str,
 ) -> bool:
-    """
-    If unable to find job info, assume job is done.
-    """
+    """If unable to find job info, assume job is done"""
 
     job_info, job_errors = get_qstat_job_json(job_id)
 

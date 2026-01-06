@@ -43,8 +43,6 @@ def generate_taskarray_log(global_tmp_path: Path):
 
     execute(f"qacct -j {job_id} > {tmp_path}/qacct_array.txt")
 
-    delete_job(job_id)
-
 
 def generate_errorjob_log(global_tmp_path: Path):
 

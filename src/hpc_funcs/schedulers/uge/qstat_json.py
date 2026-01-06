@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 def get_qstat_job_json(
     job_id: Union[str, int],
-) -> Tuple[Dict[str, Any], List[str]]:
+) -> Tuple[List[Dict[str, Any]], List[str]]:
     """Get detailed information for a specific job using qstat -j.
 
     This returns comprehensive information about a single job, including
@@ -56,7 +56,7 @@ def get_qstat_job_json(
 
     rows, errors = parse_jobinfo_json(stdout)
 
-    return {}, errors
+    return rows, errors
 
 
 def get_qstat_json(
@@ -118,10 +118,13 @@ def get_qstat_json(
     return df
 
 
-def parse_jobinfo_json(stdout: str):
+def parse_jobinfo_json(stdout: str) -> Tuple[List[Dict[str, Any]], List[str]]:
+
+    KEY = "job_info"
 
     errors: list[str] = []
     stdout_lines: list[str] = []
+
     # Filter error lines to errors, and json lines to stdout_lines
     for line in stdout.splitlines():
         (errors if line.startswith("error reason") else stdout_lines).append(line)
@@ -130,10 +133,10 @@ def parse_jobinfo_json(stdout: str):
 
     data = json.loads(stdout)
 
-    if "job_info" not in data:
+    if KEY not in data:
         return [], errors
 
-    rows = data["job_info"]
+    rows = data[KEY]
 
     return rows, errors
 
