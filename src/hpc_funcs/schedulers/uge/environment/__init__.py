@@ -81,7 +81,7 @@ def get_config() -> Dict[str, Any]:
     config = {
         "n_cores": int(n_cores),
         "scr": scr,
-        "hostname": scr,
+        "hostname": hostname,
     }
 
     return config

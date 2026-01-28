@@ -12,7 +12,7 @@ from hpc_funcs.shell import which
 logger = logging.getLogger("lmod")
 
 
-@lru_cache(maxsize=None)
+@lru_cache()
 def get_lmod_executable() -> Optional[Path]:
     _dir = os.environ.get("LMOD_DIR", None)
     dir = Path(_dir) if _dir is not None else None
