@@ -3,7 +3,7 @@ import subprocess
 from pathlib import Path
 from typing import Optional, Tuple, Union
 
-from hpce_utils.files import generate_name
+from hpc_funcs.files import generate_name
 
 logger = logging.getLogger(__name__)
 

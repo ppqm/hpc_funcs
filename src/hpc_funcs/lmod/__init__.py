@@ -7,7 +7,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from hpce_utils.shell import which
+from hpc_funcs.shell import which
 
 logger = logging.getLogger("lmod")
 

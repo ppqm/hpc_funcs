@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 def which(cmd: Union[Path, str]) -> Optional[Path]:
-    """Check if command exists in enviroment"""
+    """Check if command exists in environment"""
     path_ = shutil.which(cmd)
 
     if path_ is None:

@@ -1,8 +1,7 @@
 import multiprocessing
 import os
-import shutil
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional
 
 ENVIRON_CORES = [
     "OMP_NUM_THREADS",
@@ -93,7 +92,7 @@ def get_shm_path() -> Optional[Path]:
 # pylint: disable=no-else-return
 def is_notebook() -> bool:
     """
-    Check if module is called from a notebook enviroment
+    Check if module is called from a notebook environment
     """
     try:
         shell = get_ipython().__class__.__name__  # type: ignore

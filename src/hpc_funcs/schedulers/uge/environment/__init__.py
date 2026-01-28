@@ -22,7 +22,7 @@ def has_uge() -> bool:
 
 
 def is_job() -> bool:
-    """Check if runtime is a UGE queue enviroment"""
+    """Check if runtime is a UGE queue environment"""
 
     name = os.getenv("SGE_TASK_ID")
 
