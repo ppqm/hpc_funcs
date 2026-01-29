@@ -4,7 +4,7 @@ import shutil
 import subprocess
 import time
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Iterator, Optional, Tuple, Union
 
 logger = logging.getLogger(__name__)
 
@@ -36,20 +36,84 @@ def switch_workdir(path: Optional[Path]) -> bool:
     if path == ".":
         return False
 
-    assert os.path.exists(path), f"Cannot change directory, does not exists {path}"
+    if not os.path.exists(path):
+        raise ValueError(f"Cannot change directory, does not exist: {path}")
 
     return True
 
 
-def stream(cmd: str, cwd: Optional[Path] = None, shell: bool = True):
-    """Execute command in directory, and stream stdout. Last yield is
-    stderr
+class StreamResult:
+    """Result of a streaming command execution.
+
+    Iterating over this object yields stdout lines. After iteration is complete,
+    stderr is available via the `.stderr` property.
+
+    Example:
+        result = stream("my_command")
+        for line in result:
+            print(line)
+        if result.stderr:
+            print(f"Errors: {result.stderr}")
+    """
+
+    def __init__(self, process: subprocess.Popen) -> None:
+        self._process = process
+        self._stderr: str | None = None
+        self._exhausted = False
+
+    def __iter__(self) -> Iterator[str]:
+        if self._process.stdout is None:
+            return
+
+        for line in iter(self._process.stdout.readline, ""):
+            yield line
+
+        # Capture stderr after stdout is exhausted
+        if self._process.stderr is not None:
+            self._stderr = self._process.stderr.read()
+
+        self._process.stdout.close()
+        self._exhausted = True
+
+    @property
+    def stderr(self) -> str:
+        """Return stderr output. Must iterate through stdout first."""
+        if not self._exhausted:
+            # Consume remaining stdout if not already done
+            for _ in self:
+                pass
+        return self._stderr or ""
+
+    def wait(self) -> int:
+        """Wait for the process to complete and return the exit code."""
+        return self._process.wait()
+
+    def close(self) -> None:
+        """Close the process streams and terminate if still running."""
+        if self._process.stdout:
+            self._process.stdout.close()
+        if self._process.stderr:
+            self._process.stderr.close()
+        self._process.terminate()
+
+
+def stream(cmd: str, cwd: Optional[Path] = None, shell: bool = True) -> StreamResult:
+    """Execute command in directory, and stream stdout.
+
+    Returns a StreamResult object that can be iterated to get stdout lines.
+    After iteration, stderr is available via the `.stderr` property.
 
     :param cmd: The shell command
     :param cwd: Change directory to work directory
     :param shell: Use shell or not in subprocess
-    :param timeout: Stop the process at timeout (seconds)
-    :returns: Generator of stdout lines. Last yield is stderr.
+    :returns: StreamResult object for streaming stdout and accessing stderr.
+
+    Example:
+        result = stream("ls -la")
+        for line in result:
+            print(line, end="")
+        if result.stderr:
+            print(f"Errors: {result.stderr}")
     """
 
     if not switch_workdir(cwd):
@@ -64,15 +128,7 @@ def stream(cmd: str, cwd: Optional[Path] = None, shell: bool = True):
         cwd=cwd,
     )
 
-    for stdout_line in iter(popen.stdout.readline, ""):  # type: ignore
-        yield stdout_line
-
-    # Yield errors
-    stderr = popen.stderr.read()  # type: ignore
-    popen.stdout.close()  # type: ignore
-    yield stderr
-
-    return
+    return StreamResult(popen)
 
 
 def execute(

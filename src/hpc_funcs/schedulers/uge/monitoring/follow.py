@@ -1,10 +1,10 @@
 import datetime
 import logging
 import time
-from typing import Dict
+from io import StringIO
+from typing import Any, Dict, List, Optional
 
 import tqdm
-from pandas import DataFrame
 
 from hpc_funcs.schedulers.uge.qstat_text import (
     COLUMN_ERROR,
@@ -26,7 +26,7 @@ TQDM_OPTIONS = {
 logger = logging.getLogger(__name__)
 
 
-def get_time_from_ugestr(time_str: str):
+def get_time_from_ugestr(time_str: str) -> float:
     _time = ".".join(time_str.split(".")[:-1])
     time_ = datetime.datetime.strptime(_time, DATE_FORMAT)
     return time.mktime(time_.timetuple())
@@ -35,11 +35,14 @@ def get_time_from_ugestr(time_str: str):
 class TaskarrayProgress:
 
     @staticmethod
-    def by_jobid(job_id: str, position: int = 0, file=None):
+    def by_jobid(
+        job_id: str, position: int = 0, file: Optional[StringIO] = None
+    ) -> "TaskarrayProgress":
 
         job_id = str(job_id)
         job_infos, _ = get_qstat_job_text(job_id)
-        assert len(job_infos)
+        if not job_infos:
+            raise ValueError(f"Job not found: {job_id}")
         job_info = job_infos[0]
 
         return TaskarrayProgress(job_info, position=position, file=file)
@@ -48,7 +51,7 @@ class TaskarrayProgress:
         self,
         job_info: Dict,
         position: int = 0,
-        file=None,
+        file: Optional[StringIO] = None,
     ) -> None:
         self.position = position
         self.file = file
@@ -73,25 +76,29 @@ class TaskarrayProgress:
             or job_info.get(COLUMN_JOBID)
         )
 
-        assert job_id is not None
+        if job_id is None:
+            raise ValueError("Could not extract job_id from job_info")
         self.job_id = job_id
 
         # TODO Move submission_time to constant from format
 
         timestamp: str = job_info.get("submission_time") if is_json else job_info.get("JB_submission_time")  # type: ignore
-        assert timestamp is not None
+        if timestamp is None:
+            raise ValueError("Could not extract timestamp from job_info")
         time_start = get_time_from_ugestr(timestamp) if is_json else self._read_time(timestamp)
 
         # Handle both XML format (JB_ja_structure) and text format (job-array tasks)
         if is_xml:
             # XML format: list of dicts with RN_min, RN_max, RN_step
             job_array_info = job_info.get("JB_ja_structure")
-            assert job_array_info is not None
+            if job_array_info is None:
+                raise ValueError("JB_ja_structure not found in XML job_info")
             job_array_stop = int(job_array_info[0].get("RN_max", 1))
         else:
             # Text format: "start-stop:step" string like "1-2:1"
             job_array_str = job_info.get("job-array tasks")
-            assert job_array_str is not None
+            if job_array_str is None:
+                raise ValueError("job-array tasks not found in text job_info")
             # Parse "1-2:1" format
             parts = job_array_str.split(":")
             range_parts = parts[0].split("-")
@@ -114,30 +121,30 @@ class TaskarrayProgress:
         # Reset time
         self.pbar.last_print_t = self.pbar.start_t = time_start
 
-    def update(self, joblist: None | DataFrame = None) -> None:
+    def update(self, joblist: List[Dict[str, Any]] | None = None) -> None:
 
         if joblist is None:
-            joblist = get_all_jobs_text()
-            joblist = parse_taskarray(joblist)
+            jobs = get_all_jobs_text()
+            joblist = parse_taskarray(jobs)
 
-        # Get status
-        assert joblist is not None
-        row = joblist.loc[
-            joblist[COLUMN_JOBID] == self.job_id, [COLUMN_RUNNING, COLUMN_PENDING, COLUMN_ERROR]
-        ]
+        # Get status - find matching job in the list
+        matching_jobs = [j for j in joblist if j.get(COLUMN_JOBID) == self.job_id]
 
         n_running: int
         n_pending: int
         n_error: int
         n_finished: int
 
-        if row.empty:
+        if not len(matching_jobs):
             n_running = 0
             n_pending = 0
             n_error = 0
             n_finished = self.n_total
         else:
-            n_running, n_pending, n_error = row.iloc[0].to_numpy()  # type: ignore
+            job = matching_jobs[0]
+            n_running = int(job.get(COLUMN_RUNNING, 0))
+            n_pending = int(job.get(COLUMN_PENDING, 0))
+            n_error = int(job.get(COLUMN_ERROR, 0))
             n_finished = self.n_total - n_pending - n_running
 
         postfix = dict()

@@ -13,32 +13,48 @@ logger = logging.getLogger("lmod")
 
 
 @lru_cache()
-def get_lmod_executable() -> Optional[Path]:
+def get_lmod_executable() -> Path:
+    """Get the LMOD executable path.
+
+    Returns:
+        Path to the lmod executable.
+
+    Raises:
+        RuntimeError: If LMOD_DIR is not set or lmod executable not found.
+    """
     _dir = os.environ.get("LMOD_DIR", None)
-    dir = Path(_dir) if _dir is not None else None
-    exe = dir / "lmod" if dir is not None else None
 
-    # TODO Raise exception if cannot find executable
+    if _dir is None:
+        raise RuntimeError("LMOD_DIR environment variable not set - LMOD not available")
 
-    if exe is None:
-        logger.error("Could not find LMOD executable in environment")
-        return None
+    dir = Path(_dir)
+    exe = dir / "lmod"
 
     if not which(exe):
-        logger.error(f"Could not find {exe} executable in environment")
-        return None
+        raise RuntimeError(f"LMOD executable not found at {exe}")
 
     return exe
 
 
 # pylint: disable=too-many-locals
 def module(
-    command: str, arguments: str, cmd: Optional[Path] = get_lmod_executable()
+    command: str, arguments: str, cmd: Optional[Path] = None
 ) -> Tuple[Dict[str, str], Optional[str]]:
-    """Use lmod to execute enviromental changes
+    """Use lmod to execute environmental changes.
 
-    returns dictionary of LMOD returns, stderr
+    Args:
+        command: LMOD command (e.g., "load", "list", "use")
+        arguments: Arguments for the command
+        cmd: Path to lmod executable (defaults to auto-detected)
+
+    Returns:
+        Tuple of (environment_updates dict, stderr string)
+
+    Raises:
+        RuntimeError: If LMOD is not available or command fails.
     """
+    if cmd is None:
+        cmd = get_lmod_executable()
 
     logger.info(f"module {command} {arguments}")
 
@@ -58,7 +74,7 @@ def module(
         stderr = bstderr.decode("utf-8")
 
     if "error" in stderr:
-        assert False, stderr
+        raise RuntimeError(f"LMOD error: {stderr}")
 
     # pylint: disable=too-many-return-statements
     def _filter(line: str) -> bool:
@@ -158,7 +174,7 @@ def get_load_environment(module_name: str) -> Dict[str, str]:
     return update_dict
 
 
-def use(path: Optional[Path]) -> None:
+def use(path: Path | str) -> None:
     """Use path in MODULEPATH"""
     update_dict, _ = module("use", str(path))
     update_environment(update_dict)
@@ -176,7 +192,8 @@ def get_modules() -> Dict[int, str]:
 
     _, stderr = module("list", "")
 
-    assert stderr is not None
+    if stderr is None:
+        raise RuntimeError("LMOD module list returned no output")
 
     lines = stderr.split("\n")
 

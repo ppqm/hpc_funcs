@@ -17,12 +17,12 @@ LMOD_LINES = [
 ]
 
 
-# pylint: disable=too-many-arguments,too-many-locals,dangerous-default-value
+# pylint: disable=too-many-arguments,too-many-locals
 def generate_single_script(
     cmd: str,
     cores: int = 1,
     cwd: Optional[Path] = None,
-    environ: Dict[str, str] = {},
+    environ: Dict[str, str] | None = None,
     hours: int = 7,
     mins: Optional[int] = None,
     log_dir: Optional[Path] = DEFAULT_LOG_DIR,
@@ -42,6 +42,9 @@ def generate_single_script(
             "Cannot submit with invalid cores set. Needs to be a integer greater than 0."
         )
 
+    if environ is None:
+        environ = {}
+
     kwargs = locals()
 
     if generate_dirs:
@@ -55,12 +58,12 @@ def generate_single_script(
     return script
 
 
-# pylint: disable=too-many-arguments,too-many-locals,dangerous-default-value
+# pylint: disable=too-many-arguments,too-many-locals
 def generate_taskarray_script(
     cmd: str,
     cores: int = 1,
     cwd: Optional[Path] = None,
-    environ: Dict[str, str] = {},
+    environ: Dict[str, str] | None = None,
     hours: int = 7,
     mins: Optional[int] = None,
     log_dir: Optional[Path] = DEFAULT_LOG_DIR,
@@ -82,10 +85,13 @@ def generate_taskarray_script(
       - To set core restrictive env variables
     """
 
-    if not isinstance(cores, int) and cores >= 1:
+    if not isinstance(cores, int) or cores < 1:
         raise ValueError(
             "Cannot submit with invalid cores set. Needs to be a integer greater than 0."
         )
+
+    if environ is None:
+        environ = {}
 
     kwargs = locals()
 
@@ -151,8 +157,7 @@ def read_logfiles(
 ) -> Tuple[Dict[Path, List[str]], Dict[Path, List[str]]]:
     """Read logfiles produced by UGE task array. Ignore empty log files"""
     logger.debug(f"Looking for finished log files in {log_path}")
-    stderr_log_filenames = log_path.glob(f"*.e{job_id}*")
-    stderr_log_filenames = list(stderr_log_filenames)
+    stderr_log_filenames = list(log_path.glob(f"*.e{job_id}*"))
 
     stderr = dict()
     for filename in stderr_log_filenames:

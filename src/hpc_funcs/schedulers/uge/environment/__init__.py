@@ -1,7 +1,7 @@
 import os
 import shutil
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from hpc_funcs.shell import execute
 
@@ -51,13 +51,20 @@ def get_env() -> Dict[str, Optional[str]]:
 
 
 def get_tmpdir() -> Path:
-    """From UGE environment, get scratch directory"""
+    """From UGE environment, get scratch directory.
+
+    Raises:
+        RuntimeError: If not running in a UGE job environment.
+        ValueError: If TMPDIR is not a valid directory.
+    """
 
     tmpdir = os.getenv("TMPDIR")
-    assert tmpdir is not None
+    if tmpdir is None:
+        raise RuntimeError("TMPDIR not set - not running in UGE job environment")
 
     path = Path(tmpdir)
-    assert path.is_dir()
+    if not path.is_dir():
+        raise ValueError(f"TMPDIR is not a directory: {tmpdir}")
 
     return path
 
@@ -65,18 +72,24 @@ def get_tmpdir() -> Path:
 def get_config() -> Dict[str, Any]:
     """Get UGE configuration
 
-    - Number of cores avaiable on node
+    - Number of cores available on node
     - Scratch directory on node
     - Hostname of current node
+
+    Raises:
+        RuntimeError: If required UGE environment variables are not set.
     """
 
     n_cores = os.getenv("NSLOTS")
     scr = os.getenv("TMPDIR")
     hostname = os.getenv("HOSTNAME")
 
-    assert n_cores is not None
-    assert scr is not None
-    assert hostname is not None
+    if n_cores is None:
+        raise RuntimeError("NSLOTS not set - not running in UGE job environment")
+    if scr is None:
+        raise RuntimeError("TMPDIR not set - not running in UGE job environment")
+    if hostname is None:
+        raise RuntimeError("HOSTNAME not set - not running in UGE job environment")
 
     config = {
         "n_cores": int(n_cores),
@@ -88,11 +101,16 @@ def get_config() -> Dict[str, Any]:
 
 
 def get_cores() -> int:
-    """Get avaiable cores in current environment"""
+    """Get available cores in current environment.
+
+    Raises:
+        RuntimeError: If NSLOTS is not set.
+    """
 
     key = "NSLOTS"
     n_cores = os.getenv(key)
-    assert n_cores is not None
+    if n_cores is None:
+        raise RuntimeError("NSLOTS not set - not running in UGE job environment")
 
     n_cores_ = int(n_cores)
 

@@ -1,7 +1,7 @@
 .PHONY: update-format format test test-dist build types upload cov
 
-package=hpce_utils
-version_file1=./src/hpce_utils/version.py
+package=hpc_funcs
+version_file1=./src/hpc_funcs/version.py
 
 VERSION=$(shell cat ${version_file1} | egrep -o "([0-9]{1,}\.)+[0-9]{1,}")
 VERSION_PATCH=$(shell echo ${VERSION} | cut -d'.' -f3)

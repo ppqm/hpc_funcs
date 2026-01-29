@@ -21,11 +21,13 @@ def test_all():
 
     print()
 
-    df = get_all_jobs_json()
+    jobs_json = get_all_jobs_json()
+    df = pd.DataFrame(jobs_json)
     print(df)
     assert len(df) > 1
 
-    df = get_all_jobs_text()
+    jobs_text = get_all_jobs_text()
+    df = pd.DataFrame(jobs_text)
     print(df)
     assert len(df) > 1
 
@@ -34,7 +36,8 @@ def test_all():
 
 def test_jobinfo_from_joblist_text():
 
-    df = get_all_jobs_text()
+    jobs = get_all_jobs_text()
+    df = pd.DataFrame(jobs)
     print(df)
     assert len(df) > 1
 

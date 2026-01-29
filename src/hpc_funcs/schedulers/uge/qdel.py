@@ -1,11 +1,18 @@
 import logging
 import subprocess
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
 
-def delete_job(job_id: Optional[str]) -> None:
+def delete_job(job_id: str) -> None:
+    """Delete a UGE job.
+
+    Args:
+        job_id: The job ID to delete.
+
+    Raises:
+        RuntimeError: If qdel command fails.
+    """
 
     cmd = f"qdel {job_id}"
     logger.debug(cmd)
@@ -20,8 +27,12 @@ def delete_job(job_id: Optional[str]) -> None:
     stdout = process.stdout.strip()
     stderr = process.stderr.strip()
 
-    for line in stderr.split("\n"):
-        logger.error(line)
+    # Check for errors
+    if process.returncode != 0:
+        raise RuntimeError(f"qdel failed for job {job_id}: {stderr or stdout}")
 
-    for line in stdout.split("\n"):
-        logger.error(line)
+    # Log output for debugging
+    if stderr:
+        logger.warning(f"qdel stderr: {stderr}")
+    if stdout:
+        logger.debug(f"qdel stdout: {stdout}")

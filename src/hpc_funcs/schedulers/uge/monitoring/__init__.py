@@ -1,36 +1,42 @@
 import copy
 import logging
 import time
+from collections import defaultdict
 from typing import Any, Dict, Iterator, List
-
-import pandas as pd
-from pandas import DataFrame, Series
 
 from hpc_funcs.schedulers.uge.constants import TAGS_RUNNING
 from hpc_funcs.schedulers.uge.qstat import get_all_jobs_text
 from hpc_funcs.schedulers.uge.qstat_json import get_qstat_job_json
-from hpc_funcs.schedulers.uge.qstat_text import COLUMN_SLOTS, COLUMN_USER
+from hpc_funcs.schedulers.uge.qstat_text import COLUMN_SLOTS, COLUMN_STATE, COLUMN_USER
 
 logger = logging.getLogger(__name__)
 
 
-def get_cluster_usage() -> Series:
-    """Get cluster usage information, grouped by users
+def get_cluster_usage() -> Dict[str, int]:
+    """Get cluster usage information, grouped by users.
 
-    To get totla cores in use `pdf["slots"].sum()`
+    Returns:
+        Dict mapping username to total slots in use.
+
+    Example:
+        >>> usage = get_cluster_usage()
+        >>> total_cores = sum(usage.values())
     """
 
-    pdf = get_all_jobs_text()
+    jobs = get_all_jobs_text()
 
-    # filter to running
-    pdf = pdf[pdf.state.isin(TAGS_RUNNING)]
+    # Filter to running jobs only
+    running_jobs = [j for j in jobs if j.get(COLUMN_STATE) in TAGS_RUNNING]
 
-    pdf[COLUMN_SLOTS] = pdf[COLUMN_SLOTS].astype("int64")
+    # Group by user and sum slots
+    counts: Dict[str, int] = defaultdict(int)
+    for job in running_jobs:
+        user = job.get(COLUMN_USER, "unknown")
+        slots = int(job.get(COLUMN_SLOTS, 0))
+        counts[user] += slots
 
-    counts = pdf.groupby([COLUMN_USER])[COLUMN_SLOTS].agg("sum")
-    counts = counts.sort_values()  # type: ignore
-
-    return counts
+    # Sort by count and return as regular dict
+    return dict(sorted(counts.items(), key=lambda x: x[1]))
 
 
 def wait_for_jobs(jobs: List[str], sleep: int = 60) -> Iterator[str]:
@@ -67,12 +73,12 @@ def wait_for_jobs(jobs: List[str], sleep: int = 60) -> Iterator[str]:
 def is_job_done(
     job_id: str,
 ) -> bool:
-    """If unable to find job info, assume job is done"""
+    """Check if a job is done (no longer in queue).
 
-    job_info, job_errors = get_qstat_job_json(job_id)
+    Returns True if job is not found in qstat, meaning it has completed.
+    """
 
-    if len(job_errors):
-        logger.error(f"qstat error: {job_errors[0]}")
+    job_info, _ = get_qstat_job_json(job_id)
 
     # If there still is some qstat information, the job is not done
     if job_info:

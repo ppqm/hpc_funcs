@@ -3,8 +3,6 @@ import logging
 import subprocess
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-import pandas as pd
-
 from hpc_funcs.shell import execute
 
 logger = logging.getLogger(__name__)
@@ -20,21 +18,23 @@ def get_qstat_job_json(
 
     Args:
         job_id: The job ID to query.
-        max_retries: Maximum number of retries for the qstat command.
-        update_interval: Seconds to wait between retries.
 
     Returns:
-        Dictionary containing detailed job information from qstat -j.
+        Tuple of (job_info_list, error_list):
+        - job_info_list: List of job info dicts. Empty list if job not found.
+        - error_list: List of error reason strings (e.g., permission errors).
 
     Raises:
         json.JSONDecodeError: If the JSON output from qstat is malformed.
+        RuntimeError: If qstat command fails unexpectedly.
 
     Examples:
         >>> # Get detailed info for a specific job
-        >>> job_info = get_qstat_job(12345)
-        >>> print(job_info["job_name"])
-        >>> print(job_info["slots"])
-        >>> print(job_info["state"])
+        >>> job_info, errors = get_qstat_job_json(12345)
+        >>> if job_info:
+        ...     print(job_info[0]["job_name"])
+        >>> if errors:
+        ...     print(f"Job errors: {errors}")
     """
 
     cmd = f"qstat -j {job_id} -nenv -json"
@@ -63,17 +63,16 @@ def get_qstat_json(
     users: Optional[List[str]] = None,
     queues: Optional[List[str]] = None,
     resource_filter: Optional[str] = None,
-) -> pd.DataFrame:
+) -> List[Dict[str, Any]]:
     """Get job status information from UGE using qstat -json.
 
     Args:
         users: List of usernames to filter jobs by. If None, shows your jobs.
-        job_ids: List of specific job IDs to query. If None, queries all jobs.
         queues: List of queue names to filter by.
         resource_filter: Resource filter string in format "attr=val,..." (e.g., "arch=lx-amd64").
 
     Returns:
-        DataFrame with job information. Each row represents a job (or task) with columns for
+        List of dicts with job information. Each dict represents a job (or task) with keys for
         job properties, state, owner, queue, slots, etc.
 
     Raises:
@@ -81,13 +80,10 @@ def get_qstat_json(
 
     Examples:
         >>> # Get all jobs for current user
-        >>> df = get_qstat(users=["testuser1"])
+        >>> jobs = get_qstat_json(users=["testuser1"])
 
         >>> # Get jobs in specific queues
-        >>> df = get_qstat(queues=["gpu.q", "default.q"])
-
-        >>> # Get all running and pending jobs with full details
-        >>> df = get_qstat(show_full=True)
+        >>> jobs = get_qstat_json(queues=["gpu.q", "default.q"])
     """
 
     cmd = "qstat -json"
@@ -110,26 +106,43 @@ def get_qstat_json(
     if stderr:
         logger.warning(f"qstat stderr: {stderr}")
 
-    # Convert to DataFrame
+    # Parse and return list of dicts
     rows = parse_joblist_json(stdout)
 
-    df = pd.DataFrame(rows)
-
-    return df
+    return rows
 
 
 def parse_jobinfo_json(stdout: str) -> Tuple[List[Dict[str, Any]], List[str]]:
+    """Parse job info JSON output.
+
+    Args:
+        stdout: Raw output from qstat -j command.
+
+    Returns:
+        Tuple of (job_info_list, error_list):
+        - job_info_list: List of job info dicts. Empty list if job not found.
+        - error_list: List of error reason strings (e.g., permission errors).
+
+    Raises:
+        json.JSONDecodeError: If JSON is malformed.
+    """
 
     KEY = "job_info"
 
-    errors: list[str] = []
     stdout_lines: list[str] = []
+    errors: list[str] = []
 
-    # Filter error lines to errors, and json lines to stdout_lines
+    # Separate error lines from JSON content
     for line in stdout.splitlines():
-        (errors if line.startswith("error reason") else stdout_lines).append(line)
+        if line.startswith("error reason"):
+            errors.append(line)
+        else:
+            stdout_lines.append(line)
 
     stdout = "\n".join(stdout_lines)
+
+    if not stdout.strip():
+        return [], errors
 
     data = json.loads(stdout)
 
@@ -141,14 +154,14 @@ def parse_jobinfo_json(stdout: str) -> Tuple[List[Dict[str, Any]], List[str]]:
     return rows, errors
 
 
-def parse_joblist_json(stdout) -> List[Dict[str, str]]:
-    """Parse qstat JSON output into a pandas DataFrame.
+def parse_joblist_json(stdout: str) -> List[Dict[str, str]]:
+    """Parse qstat JSON output into a list of job dictionaries.
 
     Args:
-        data: Raw JSON from qstat -json.
+        stdout: Raw JSON string from qstat -json.
 
     Returns:
-        DataFrame with one row per job/task, columns for job properties.
+        List of dicts, one per job/task, with job properties.
     """
 
     data = json.loads(stdout)

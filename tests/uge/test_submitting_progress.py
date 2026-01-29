@@ -4,7 +4,7 @@ from pathlib import Path
 from hpc_funcs.schedulers.uge.constants import TASK_ENVIRONMENT_VARIABLE
 from hpc_funcs.schedulers.uge.monitoring import wait_for_jobs
 from hpc_funcs.schedulers.uge.monitoring.follow import TaskarrayProgress
-from hpc_funcs.schedulers.uge.qsub import submit_script
+from hpc_funcs.schedulers.uge.qsub import submit_script, write_script
 from hpc_funcs.schedulers.uge.submission import generate_taskarray_script
 
 
@@ -31,7 +31,8 @@ def test_array_progressbar(global_tmp_path: Path):
 
     # Submit UGE job
     print("scratch:", tmp_path)
-    job_id, _ = submit_script(script, scr=tmp_path)
+    script_path = write_script(script, directory=tmp_path)
+    job_id = submit_script(script_path)
     print(job_id)
     assert job_id is not None
 

@@ -1,7 +1,6 @@
 import logging
 import subprocess
 from pathlib import Path
-from typing import Optional, Tuple, Union
 
 from hpc_funcs.files import generate_name
 
@@ -10,42 +9,71 @@ logger = logging.getLogger(__name__)
 # TODO Support for sync -y
 
 
-# pylint: disable=dangerous-default-value
-def submit_script(
-    bash_script: str,
-    scr: Optional[Union[str, Path]] = None,
-) -> Tuple[Optional[str], Optional[Path]]:
-    """Submit script and return UGE Job ID
+def write_script(
+    content: str,
+    directory: Path | str | None = None,
+    filename: str | None = None,
+) -> Path:
+    """Write a bash script to disk for later submission.
 
-    return:
-        job_id - The UGE Job ID
-        script_path - The path to the generated script
+    Args:
+        content: The bash script content to write.
+        directory: Directory to write the script to. Defaults to current directory.
+        filename: Optional filename. If not provided, generates a unique name.
+
+    Returns:
+        Path to the written script file.
+
+    Raises:
+        ValueError: If directory exists but is not a directory.
     """
+    if directory is None:
+        directory = Path("./")
+    else:
+        directory = Path(directory)
 
-    cmd = "qsub"
+    directory.mkdir(parents=True, exist_ok=True)
 
-    filename = f"tmp_uge.{generate_name()}.sh"
+    if not directory.is_dir():
+        raise ValueError(f"Script directory is not a directory: {directory}")
 
-    if scr is None:
-        scr = "./"
+    if filename is None:
+        filename = f"tmp_uge.{generate_name()}.sh"
 
-    scr = Path(scr)
-    scr.mkdir(parents=True, exist_ok=True)
+    script_path = directory / filename
 
-    assert scr.is_dir()
+    with open(script_path, "w") as f:
+        f.write(content)
 
-    with open(scr / filename, "w") as f:
-        f.write(bash_script)
+    logger.debug(f"Wrote script to {script_path}")
 
-    logger.debug(f"Writing {filename} for UGE on {scr}")
+    return script_path
 
-    cmd = f"{cmd} {filename}"
-    logger.debug(cmd)
-    logger.debug(scr)
+
+def submit_script(script_path: Path | str) -> str:
+    """Submit a script to UGE and return the job ID.
+
+    Args:
+        script_path: Path to the script file to submit.
+
+    Returns:
+        The UGE job ID as a string.
+
+    Raises:
+        RuntimeError: If submission fails or job ID cannot be parsed.
+        FileNotFoundError: If script_path does not exist.
+    """
+    script_path = Path(script_path)
+
+    if not script_path.exists():
+        raise FileNotFoundError(f"Script not found: {script_path}")
+
+    cmd = f"qsub {script_path.name}"
+    logger.debug(f"Running: {cmd} in {script_path.parent}")
 
     process = subprocess.run(
         cmd,
-        cwd=scr,
+        cwd=script_path.parent,
         encoding="utf-8",
         capture_output=True,
         shell=True,
@@ -55,32 +83,29 @@ def submit_script(
     stderr = process.stderr
 
     if stderr:
-        for line in stderr.split("\n"):
-            logger.error(line)
-        return None, scr / filename
+        raise RuntimeError(f"qsub failed with stderr: {stderr.strip()}")
 
     if not stdout:
-        logger.error("Unable to fetch qsub job id from stdout")
-        return None, scr / filename
+        raise RuntimeError("qsub returned no output - unable to get job ID")
 
     # Successful submission
     # find id
-    logger.info(f"submit stdout: {stdout.strip().rstrip()}")
+    logger.info(f"submit stdout: {stdout.strip()}")
 
-    #
     # Your job JOB_ID ("JOB_NAME") has been submitted
-    uge_id = stdout.strip().rstrip().split("\n")[-1]
-    if "has been submitted" not in uge_id:
-        raise RuntimeError(f"Could not find UGE Job ID in: '{uge_id}'")
-    uge_id = uge_id.split()[2]
+    last_line = stdout.strip().split("\n")[-1]
+    if "has been submitted" not in last_line:
+        raise RuntimeError(f"Unexpected qsub output: '{last_line}'")
+
+    uge_id = last_line.split()[2]
     uge_id = uge_id.split(".")[0]
 
-    # Test format of job_id
+    # Validate format of job_id
     try:
         int(uge_id)
     except ValueError:
-        raise ValueError("UGE Job ID is not correct format")
+        raise RuntimeError(f"UGE Job ID is not a valid number: '{uge_id}'")
 
-    logger.info(f"got job_id: {uge_id}")
+    logger.info(f"Submitted job: {uge_id}")
 
-    return uge_id, scr / filename
+    return uge_id

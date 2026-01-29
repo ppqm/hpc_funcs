@@ -1,6 +1,5 @@
 import pandas as pd
 import pytest
-from pandas import Series
 
 from hpc_funcs.schedulers.uge import has_uge
 from hpc_funcs.schedulers.uge.monitoring import get_cluster_usage
@@ -13,8 +12,13 @@ if not has_uge():
 
 def test_cluster_usage():
 
-    pdf_counts = get_cluster_usage()
+    usage = get_cluster_usage()
 
-    assert isinstance(pdf_counts, Series)
+    # Returns dict mapping username to slot count
+    assert isinstance(usage, dict)
+
+    # Convert to Series for display
+    series = pd.Series(usage)
+    print(series)
 
     return

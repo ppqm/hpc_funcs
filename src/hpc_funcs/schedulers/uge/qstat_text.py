@@ -3,9 +3,6 @@ import re
 import subprocess
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-import pandas as pd
-from pandas import DataFrame
-
 from .constants import TAGS_ERROR, TAGS_PENDING, TAGS_RUNNING
 
 logger = logging.getLogger(__name__)
@@ -53,8 +50,8 @@ def get_qstat_text(
     users: Optional[List[str]] = None,
     queues: Optional[List[str]] = None,
     resource_filter: Optional[str] = None,
-) -> pd.DataFrame:
-    """Get job status information from UGE using qstat -json.
+) -> List[Dict[str, Any]]:
+    """Get job status information from UGE using qstat text output.
 
     Args:
         users: List of usernames to filter jobs by. If None, shows your jobs.
@@ -62,24 +59,15 @@ def get_qstat_text(
         resource_filter: Resource filter string in format "attr=val,..." (e.g., "arch=lx-amd64").
 
     Returns:
-        DataFrame with job information. Each row represents a job (or task) with columns for
+        List of dicts with job information. Each dict represents a job (or task) with keys for
         job properties, state, owner, queue, slots, etc.
-
-    Raises:
-        json.JSONDecodeError: If the JSON output from qstat is malformed.
 
     Examples:
         >>> # Get all jobs for current user
-        >>> df = get_qstat(users=["testuser1"])
-
-        >>> # Get specific jobs
-        >>> df = get_qstat(job_ids=[12345, 12346])
+        >>> jobs = get_qstat_text(users=["testuser1"])
 
         >>> # Get jobs in specific queues
-        >>> df = get_qstat(queues=["gpu.q", "default.q"])
-
-        >>> # Get all running and pending jobs with full details
-        >>> df = get_qstat(show_full=True)
+        >>> jobs = get_qstat_text(queues=["gpu.q", "default.q"])
     """
 
     cmd = "qstat"
@@ -110,36 +98,36 @@ def get_qstat_text(
     if stderr:
         logger.warning(f"qstat stderr: {stderr}")
 
-    # Convert to DataFrame
-    df = parse_joblist_text(stdout)
+    # Parse and return list of dicts
+    jobs = parse_joblist_text(stdout)
 
-    return df
+    return jobs
 
 
 def get_qstat_job_text(
     job_id: Union[str, int],
 ) -> Tuple[List[Dict[str, Any]], List[str]]:
-    """Get detailed information for a specific job using qstat -j -xml.
+    """Get detailed information for a specific job using qstat -j (text format).
 
     This returns comprehensive information about a single job, including
-    resource requests, submission details, and task status in XML format,
-    which is then parsed into a Python dictionary.
+    resource requests, submission details, and task status.
 
     Args:
         job_id: The job ID to query.
 
     Returns:
-        Tuple containing:
-            - List of dictionaries with detailed job information (typically one job)
-            - List of error messages (if any)
+        Tuple of (job_info_list, error_list):
+        - job_info_list: List of job info dicts. Empty list if job not found.
+        - error_list: List of error reason strings (e.g., permission errors).
 
     Examples:
         >>> # Get detailed info for a specific job
-        >>> jobs, errors = get_qstat_job_xml(12345)
+        >>> jobs, errors = get_qstat_job_text(12345)
         >>> if jobs:
         ...     job = jobs[0]
-        ...     print(job["JB_job_name"])
-        ...     print(job["JB_owner"])
+        ...     print(job["job_name"])
+        >>> if errors:
+        ...     print(f"Errors: {errors}")
     """
 
     cmd = f"qstat -j {job_id} -nenv"
@@ -159,27 +147,26 @@ def get_qstat_job_text(
     if stderr:
         logger.warning(f"qstat stderr: {stderr}")
 
-    # Parse error lines that might appear before XML
+    # Separate error lines from content
     lines = stdout.splitlines()
-    errors = []
-    xml_lines = []
+    text_lines: list[str] = []
+    errors: list[str] = []
 
     for line in lines:
         if line.startswith("error reason"):
             errors.append(line)
         else:
-            xml_lines.append(line)
+            text_lines.append(line)
 
-    del lines
-    stdout = "\n".join(xml_lines)
+    stdout = "\n".join(text_lines)
 
-    # Parse the XML
+    # Parse the text output
     jobs = parse_jobinfo_text(stdout)
 
     return jobs, errors
 
 
-def parse_joblist_text(stdout: str) -> pd.DataFrame:
+def parse_joblist_text(stdout: str) -> List[Dict[str, Any]]:
     """
     Parse UGE qstat text output (list format).
 
@@ -189,11 +176,11 @@ def parse_joblist_text(stdout: str) -> pd.DataFrame:
     Returns:
         List of dictionaries containing job information
     """
-    jobs = []
+    jobs: List[Dict[str, Any]] = []
     lines = stdout.strip().split("\n")
 
     if len(lines) < 3:
-        return pd.DataFrame([])
+        return []
 
     # First line is the header with column names
     header_line = lines[0]
@@ -220,7 +207,7 @@ def parse_joblist_text(stdout: str) -> pd.DataFrame:
 
         # Extract fields based on column positions
         # We'll use the positions to slice the line
-        job = {}
+        job: Dict[str, Any] = {}
 
         for i, col in enumerate(ordered_cols):
 
@@ -232,7 +219,7 @@ def parse_joblist_text(stdout: str) -> pd.DataFrame:
 
         jobs.append(job)
 
-    return pd.DataFrame(jobs)
+    return jobs
 
 
 def parse_jobinfo_text(stdout: str) -> List[Dict[str, str]]:
@@ -271,7 +258,8 @@ def parse_jobinfo_text(stdout: str) -> List[Dict[str, str]]:
     return output
 
 
-def parse_qstat_text(stdout: str) -> pd.DataFrame:
+def parse_qstat_text(stdout: str) -> List[Dict[str, Any]]:
+    """Parse qstat text output into list of job dicts."""
     stdout = stdout.strip()
     lines = stdout.split("\n")
 
@@ -279,7 +267,7 @@ def parse_qstat_text(stdout: str) -> pd.DataFrame:
     header.remove("at")
     header_indicies = []
 
-    rows = []
+    rows: List[Dict[str, Any]] = []
 
     for line in header[1:]:
         idx = lines[0].index(line)
@@ -301,50 +289,58 @@ def parse_qstat_text(stdout: str) -> pd.DataFrame:
         line_ = split_qstat_line(line)
         line_ = list(line_)
 
-        row = {key: value for key, value in zip(header, line_)}
+        row: Dict[str, Any] = {key: value for key, value in zip(header, line_)}
+        # Convert slots to int
+        if "slots" in row:
+            row["slots"] = int(row["slots"])
         rows.append(row)
 
-    pdf = pd.DataFrame(rows)
-    pdf["slots"] = pdf["slots"].astype(int)
-
-    return pdf
+    return rows
 
 
-def parse_taskarray(pdf: DataFrame) -> pd.DataFrame:
+def parse_taskarray(jobs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Parse task array information from job list.
 
-    # for unique job-ids
-    job_ids = pdf[COLUMN_JOBID].unique()
+    Args:
+        jobs: List of job dicts from get_qstat_text or parse_joblist_text
 
-    def _parse(line):
+    Returns:
+        List of dicts with job_id, running, pending, error counts
+    """
+
+    def _parse_task_count(line: str) -> int:
+        """Parse task array string like '1-100:1' into task count."""
         count = 0
 
-        lines = line.split(",")
-        for task in lines:
+        parts = line.split(",")
+        for task in parts:
             if "-" not in task:
                 count += 1
                 continue
 
-            start, stop, _ = re.split(",|:|-|!", task)
+            start, stop, _ = re.split(r",|:|-|!", task)
             count += int(stop) - int(start)
 
         return count
 
-    rows = []
+    # Get unique job IDs
+    job_ids = set(job[COLUMN_JOBID] for job in jobs)
+
+    rows: List[Dict[str, Any]] = []
 
     for job_id in job_ids:
-        jobs = pdf[pdf[COLUMN_JOBID] == job_id]
+        # Filter jobs by job_id
+        job_subset = [j for j in jobs if j[COLUMN_JOBID] == job_id]
 
-        pending_jobs = jobs[jobs[COLUMN_STATE].isin(TAGS_PENDING)]
-        running_jobs = jobs[jobs[COLUMN_STATE].isin(TAGS_RUNNING)]
-        error_jobs = jobs[jobs[COLUMN_STATE].isin(TAGS_ERROR)]
-        # deleted_jobs = jobs[jobs[COLUMN_STATE].isin(deleted_tags)]
+        # Filter by state
+        pending_jobs = [j for j in job_subset if j.get(COLUMN_STATE) in TAGS_PENDING]
+        running_jobs = [j for j in job_subset if j.get(COLUMN_STATE) in TAGS_RUNNING]
+        error_jobs = [j for j in job_subset if j.get(COLUMN_STATE) in TAGS_ERROR]
 
-        pending_count = pending_jobs[COLUMN_ARRAY].apply(_parse)
-        error_count = error_jobs[COLUMN_ARRAY].apply(_parse)
-
+        # Count tasks
+        n_pending = sum(_parse_task_count(j.get(COLUMN_ARRAY, "")) for j in pending_jobs)
         n_running = len(running_jobs)
-        n_pending = pending_count.values.sum()
-        n_error = error_count.values.sum()
+        n_error = sum(_parse_task_count(j.get(COLUMN_ARRAY, "")) for j in error_jobs)
 
         row = {
             COLUMN_JOBID: job_id,
@@ -355,4 +351,4 @@ def parse_taskarray(pdf: DataFrame) -> pd.DataFrame:
 
         rows.append(row)
 
-    return pd.DataFrame(rows)
+    return rows

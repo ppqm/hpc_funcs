@@ -2,6 +2,7 @@ import logging
 import subprocess
 import xml.etree.ElementTree as ET
 from typing import Any, Dict, List, Union
+from xml.etree.ElementTree import Element
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +59,20 @@ def get_qstat_job_xml(
         return []
 
 
-def parse_jobinfo_xml(stdout_xml: str):
+def parse_jobinfo_xml(
+    stdout_xml: str,
+) -> List[
+    Dict[
+        str,
+        Union[
+            str,
+            List[Dict[str, Union[List[Dict[str, str]], str]]],
+            List[Dict[str, str]],
+            Dict[str, Dict[str, str]],
+            Dict[str, str],
+        ],
+    ]
+]:
     """
     Parse qstat -j -xml output into a list of job info dictionaries.
 
@@ -92,7 +106,8 @@ def parse_jobinfo_xml(stdout_xml: str):
     for element in root.findall(".//djob_info/element"):
         d = parse_element(element)
 
-        assert isinstance(d, dict)
+        if not isinstance(d, dict):
+            raise RuntimeError(f"Expected dict from parse_element, got {type(d)}")
 
         jobs.append(d)
         print(d)
@@ -100,7 +115,7 @@ def parse_jobinfo_xml(stdout_xml: str):
     return jobs
 
 
-def parse_element(elem):
+def parse_element(elem: Element) -> Any:
     """
     return string, dict or list
     """
@@ -118,7 +133,18 @@ def parse_element(elem):
     return element_to_dict(elem)
 
 
-def element_to_dict(elem):
+def element_to_dict(
+    elem: Element,
+) -> Dict[
+    str,
+    Union[
+        str,
+        List[Dict[str, Union[List[Dict[str, str]], str]]],
+        List[Dict[str, str]],
+        Dict[str, Dict[str, str]],
+        Dict[str, str],
+    ],
+]:
 
     children = list(elem)
     child_map: Dict[str, List[Any]] = {}
@@ -133,7 +159,7 @@ def element_to_dict(elem):
     return d
 
 
-def element_to_list(elem):
+def element_to_list(elem: Element) -> List[Dict[str, Union[List[Dict[str, str]], str]]]:
 
     out: List[Any] = []
     for child in elem:
