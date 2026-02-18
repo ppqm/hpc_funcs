@@ -1,0 +1,11 @@
+jinja2
+monkeytype
+mypy
+numpy
+pandas
+pandas-stubs
+pip
+pre-commit
+pytest
+tqdm
+types-tqdm
