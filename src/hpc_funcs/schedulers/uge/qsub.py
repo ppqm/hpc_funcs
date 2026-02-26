@@ -68,7 +68,7 @@ def submit_script(script_path: Path | str) -> str:
     if not script_path.exists():
         raise FileNotFoundError(f"Script not found: {script_path}")
 
-    cmd = f"qsub {script_path.name}"
+    cmd = f"qsub -terse {script_path.name}"
     logger.debug(f"Running: {cmd} in {script_path.parent}")
 
     process = subprocess.run(
