@@ -19,14 +19,12 @@ def test_array_progressbar(global_tmp_path: Path):
     log_dir = tmp_path / "uge_testlogs"
 
     script: str = generate_script(
-        {
-            "cmd": command,
-            "cwd": tmp_path,
-            "log_dir": log_dir,
-            "name": "TestJob",
-            "task_concurrent": 2,
-            "task_stop": 3,
-        }
+        cmd=command,
+        cwd=tmp_path,
+        log_dir=log_dir,
+        name="TestJob",
+        task_concurrent=2,
+        task_stop=3,
     )
     print(script)
     assert command in script

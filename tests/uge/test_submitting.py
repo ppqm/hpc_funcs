@@ -14,7 +14,7 @@ from hpc_funcs.schedulers.uge.submission import generate_script, read_logfiles
 
 def test_generate_submit_script():
     command = "which python"
-    script: str = generate_script({"cmd": command})
+    script: str = generate_script(cmd=command)
     print(script)
     assert command in script
 
@@ -31,13 +31,11 @@ def test_single(global_tmp_path: Path):
     log_dir = tmp_path / "uge_testlogs"
 
     script: str = generate_script(
-        {
-            "cmd": command,
-            "cores": 1,
-            "cwd": tmp_path,
-            "log_dir": log_dir,
-            "name": "TestJob",
-        }
+        cmd=command,
+        cores=1,
+        cwd=tmp_path,
+        log_dir=log_dir,
+        name="TestJob",
     )
     print(script)
     assert command in script
@@ -89,15 +87,13 @@ def test_taskarray(global_tmp_path: Path):
     log_dir = tmp_path / "uge_testlogs"
 
     script: str = generate_script(
-        {
-            "cmd": command,
-            "cores": 1,
-            "cwd": tmp_path,
-            "log_dir": log_dir,
-            "name": "TestJob",
-            "task_concurrent": 1,
-            "task_stop": 2,
-        }
+        cmd=command,
+        cores=1,
+        cwd=tmp_path,
+        log_dir=log_dir,
+        name="TestJob",
+        task_concurrent=1,
+        task_stop=2,
     )
     print(script)
     assert command in script
@@ -153,14 +149,12 @@ def test_failed_command(global_tmp_path: Path):
     log_dir = tmp_path / "logs"
     n_tasks = 2
     script: str = generate_script(
-        {
-            "cmd": command,
-            "cores": 1,
-            "log_dir": log_dir,
-            "name": "TestJob",
-            "task_concurrent": 1,
-            "task_stop": n_tasks,
-        }
+        cmd=command,
+        cores=1,
+        log_dir=log_dir,
+        name="TestJob",
+        task_concurrent=1,
+        task_stop=n_tasks,
     )
     print(script)
     assert command in script
@@ -212,13 +206,11 @@ def test_failed_uge_submit(tmp_path: Path):
     n_tasks = 2
 
     script: str = generate_script(
-        {
-            "cmd": command,
-            "log_dir": log_dir,
-            "name": "TestJob",
-            "task_concurrent": 1,
-            "task_stop": n_tasks,
-        },
+        cmd=command,
+        log_dir=log_dir,
+        name="TestJob",
+        task_concurrent=1,
+        task_stop=n_tasks,
         generate_dirs=False,
     )
 

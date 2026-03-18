@@ -8,9 +8,6 @@ from pydantic import BaseModel, EmailStr, Field
 
 DEFAULT_LOG_DIR = Path("./ugelogs/")
 MASTER_TEMPLATE = Path(__file__).parent / "templates" / "submit_template.jinja"
-# TEMPLATE_TASKARRAY = Path(__file__).parent / "templates" / "submit-task-array.jinja"
-# TEMPLATE_SINGLE = Path(__file__).parent / "templates" / "submit-normal.jinja"
-# TEMPLATE_HOLDING = Path(__file__).parent / "templates" / "submit-holding.jinja"
 logger = logging.getLogger(__name__)
 
 LMOD_LINES = [
@@ -54,7 +51,10 @@ class TaskConfig(BaseModel):
     )
 
     # Job dependencies
-    hold_job_id: Optional[str] = Field(default=None, description="Hold job ID for dependencies")
+    hold_job_id: Optional[str] = Field(
+        default=None,
+        description="Hold job ID for dependencies. Several job IDs can be separated by commas.",
+    )
 
     # Modules
     module_use: List[Path] = Field(default_factory=list, description="Module use paths")
@@ -62,15 +62,22 @@ class TaskConfig(BaseModel):
 
 
 def generate_script(
-    config: TaskConfig | dict,
+    config: TaskConfig | None = None,
     generate_dirs: bool = True,
+    **kwargs,
 ) -> str:
     """
     Generate a script to submit a job to UGE based on the provided configuration.
+
+    Can be called with a TaskConfig, or keyword arguments:
+        generate_script(config=TaskConfig(...))
+        generate_script(cmd="echo hello", cores=4)
     """
 
-    if not isinstance(config, TaskConfig):
-        config = TaskConfig(**config)
+    if config is None:
+        config = TaskConfig(**kwargs)
+    if kwargs:
+        config = config.model_copy(update=kwargs)
 
     if generate_dirs:
         generate_log_dir(config.log_dir)
