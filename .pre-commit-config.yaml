@@ -11,6 +11,7 @@ repos:
         args: ["--unsafe"]
       - id: check-ast
       - id: check-json
+        exclude: ^tests/resources/uge/qstat_jobinfo_(array|error)\.json$
       - id: debug-statements
       - id: detect-aws-credentials
         args: [--allow-missing-credentials]
@@ -29,10 +30,10 @@ repos:
   - repo: local
     hooks:
 
-      - id: mypy
+      - id: ty
         name: Static type checking
-        entry: mypy
-        files: \.py$
+        entry: ty check
+        files: ^src/.*\.py$
         language: python
 
       - id: jupyisort

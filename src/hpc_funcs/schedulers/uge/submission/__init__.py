@@ -1,7 +1,7 @@
 import logging
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Optional
 
 from jinja2 import Template
 
@@ -157,7 +157,7 @@ def read_logfiles(
     logger.debug(f"Looking for finished log files in {log_path}")
     stderr_log_filenames = list(log_path.glob(f"*.e{job_id}*"))
 
-    stderr = dict()
+    stderr = {}
     for filename in stderr_log_filenames:
         if filename.stat().st_size == 0:
             continue
@@ -167,10 +167,10 @@ def read_logfiles(
         stderr = filter_stderr_for_lmod(stderr)
 
     if ignore_stdout:
-        return dict(), stderr
+        return {}, stderr
 
     stdout_log_filenames = log_path.glob(f"*.o{job_id}*")
-    stdout = dict()
+    stdout = {}
     for filename in stdout_log_filenames:
         if filename.stat().st_size == 0:
             continue

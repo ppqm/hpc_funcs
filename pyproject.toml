@@ -24,7 +24,7 @@ dependencies = []
 [project.optional-dependencies]
 dev = [
     "ruff",
-    "mypy",
+    "ty",
     "pip",
     "pre-commit",
     "pytest",
@@ -74,11 +74,18 @@ known-first-party = ["hpc_funcs"]
 "tests/*" = ["B017", "B023", "E501"]
 "*/__init__.py" = ["F401"]
 
-[tool.mypy]
-python_version = "3.11"
-warn_return_any = true
-warn_unused_configs = true
-ignore_missing_imports = true
+[tool.ty]
+# Type checking with ty (Astral's extremely fast Python type checker)
+
+[tool.ty.environment]
+python-version = "3.11"
+
+[tool.ty.src]
+exclude = ["tests/"]
+
+[tool.ty.rules]
+# Ignore unresolved imports since pre-commit env doesn't have all packages
+unresolved-import = "ignore"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

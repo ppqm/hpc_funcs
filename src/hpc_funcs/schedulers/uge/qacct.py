@@ -33,14 +33,14 @@ def parse_qacct(stdout: str) -> list[dict[str, str]]:
     Returns list key-value dict per section.
     """
 
-    output: list[dict[str, str]] = [dict()]
+    output: list[dict[str, str]] = [{}]
 
     lines = stdout.split("\n")
 
     for line in lines:
         if "===========" in line:
             if len(output[-1]) > 1:
-                output += [dict()]
+                output += [{}]
             continue
 
         # Format: pe_taskid     NONE

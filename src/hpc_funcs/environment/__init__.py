@@ -1,7 +1,7 @@
 import multiprocessing
 import os
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Optional
 
 ENVIRON_CORES = [
     "OMP_NUM_THREADS",
@@ -107,7 +107,7 @@ def is_notebook() -> bool:
 
 def get_environment(env_names: list[str]) -> dict[str, str]:
     """Get environ variables that matter"""
-    environ = dict()
+    environ = {}
 
     for var in env_names:
         value = os.environ.get(var, None)

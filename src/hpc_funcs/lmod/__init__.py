@@ -5,7 +5,7 @@ import subprocess
 import sys
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 from hpc_funcs.shell import which
 
@@ -103,10 +103,7 @@ def module(
         if "_LMFILES_" in line:
             return False
 
-        if "_ModuleTable" in line:
-            return False
-
-        return True
+        return "_ModuleTable" not in line
 
     def _split_line(line: str) -> tuple[str, str]:
         # format:
@@ -210,15 +207,12 @@ def get_modules() -> dict[int, str]:
         if line[0] != " ":
             return False
 
-        if ")" not in line:
-            return False
-
-        return True
+        return ")" in line
 
     # Filter to only lines with modules
     lines = [line for line in lines if _filter(line)]
 
-    modules = dict()
+    modules = {}
     for line in lines:
         # Standardize the line
         line = " ".join(line.strip().split())

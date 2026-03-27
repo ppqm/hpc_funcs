@@ -1,7 +1,7 @@
 import os
 import shutil
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from hpc_funcs.shell import execute
 
@@ -15,10 +15,7 @@ def has_uge() -> bool:
 
     cmd = shutil.which(COMMAND_SUBMIT)
 
-    if cmd is not None:
-        return True
-
-    return False
+    return cmd is not None
 
 
 def is_job() -> bool:
@@ -26,10 +23,7 @@ def is_job() -> bool:
 
     name = os.getenv("SGE_TASK_ID")
 
-    if name is None:
-        return False
-
-    return True
+    return name is not None
 
 
 def get_env() -> dict[str, str | None]:
@@ -127,10 +121,7 @@ def is_interactive():
         return False
 
     # if request is qrlogin, then qrsh was used
-    if uge_type == "QRLOGIN":
-        return True
-
-    return False
+    return uge_type == "QRLOGIN"
 
 
 def source(bashfile):
@@ -148,7 +139,7 @@ def source(bashfile):
     stdout, _ = execute(cmd)
     lines = stdout.split("\n")
 
-    variables = dict()
+    variables = {}
 
     for line in lines:
         line = line.split("=")

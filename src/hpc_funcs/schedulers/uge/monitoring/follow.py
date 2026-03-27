@@ -145,7 +145,7 @@ class TaskarrayProgress:
             n_error = int(job.get(COLUMN_ERROR, 0))
             n_finished = self.n_total - n_pending - n_running
 
-        postfix = dict()
+        postfix = {}
 
         if n_error > 0:
             postfix["err"] = n_error

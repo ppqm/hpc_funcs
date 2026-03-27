@@ -229,14 +229,14 @@ def parse_jobinfo_text(stdout: str) -> list[dict[str, str]]:
 
     COL_VALUE_START = 28
 
-    output: list[dict[str, str]] = [dict()]
+    output: list[dict[str, str]] = [{}]
 
     lines = stdout.split("\n")
 
     for line in lines:
         if "=" * 5 in line:
             if len(output[-1]) > 1:
-                output += [dict()]
+                output += [{}]
             continue
 
         # Format: pe_taskid     NONE
@@ -288,7 +288,7 @@ def parse_qstat_text(stdout: str) -> list[dict[str, Any]]:
         line_ = split_qstat_line(line)
         line_ = list(line_)
 
-        row: dict[str, Any] = {key: value for key, value in zip(header, line_, strict=False)}
+        row: dict[str, Any] = dict(zip(header, line_, strict=False))
         # Convert slots to int
         if "slots" in row:
             row["slots"] = int(row["slots"])
@@ -323,7 +323,7 @@ def parse_taskarray(jobs: list[dict[str, Any]]) -> list[dict[str, Any]]:
         return count
 
     # Get unique job IDs
-    job_ids = set(job[COLUMN_JOBID] for job in jobs)
+    job_ids = {job[COLUMN_JOBID] for job in jobs}
 
     rows: list[dict[str, Any]] = []
 

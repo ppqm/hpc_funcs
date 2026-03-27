@@ -3,7 +3,7 @@ import logging
 import time
 from collections import defaultdict
 from collections.abc import Iterator
-from typing import Any, Dict, List
+from typing import Any
 
 from hpc_funcs.schedulers.uge.constants import TAGS_RUNNING
 from hpc_funcs.schedulers.uge.qstat import get_all_jobs_text
@@ -82,9 +82,6 @@ def is_job_done(
     job_info, _ = get_qstat_job_json(job_id)
 
     # If there still is some qstat information, the job is not done
-    if job_info:
-        return False
-
     # TODO Check qacct -j information
 
-    return True
+    return not job_info

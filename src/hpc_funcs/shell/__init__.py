@@ -5,7 +5,7 @@ import subprocess
 import time
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Optional, Tuple, Union
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -66,8 +66,7 @@ class StreamResult:
         if self._process.stdout is None:
             return
 
-        for line in iter(self._process.stdout.readline, ""):
-            yield line
+        yield from iter(self._process.stdout.readline, "")
 
         # Capture stderr after stdout is exhausted
         if self._process.stderr is not None:
@@ -209,7 +208,8 @@ def execute_with_retry(
     :param update_interval: How long to wait between retries
     :returns: stdout and stderr as string
     :raises: subprocess.CalledProcessError if command fails more than max_retries
-    :raises: subprocess.TimeoutExpired if timeout is reached and the command failed more than max_retries
+    :raises: subprocess.TimeoutExpired if timeout is reached and the command failed more
+        than max_retries
     :raises: FileNotFoundError if command is not found
     """
 

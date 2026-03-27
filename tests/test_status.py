@@ -148,11 +148,11 @@ def test_follow_progress_with_qstat_failures(caplog):
     # Patch subprocess.run in the correct module
     with patch("hpce_utils.shell.subprocess.run", side_effect=side_effects) as mock_subprocess:
         # Patch tqdm to avoid actual progress bars in test output
-        with patch("hpce_utils.managers.uge.status.tqdm"):
-            with caplog.at_level("WARNING", logger="hpce_utils.managers.uge.status"):
-                status.follow_progress(
-                    username="username", job_ids=["12345678"], update_interval=0.1
-                )
+        with (
+            patch("hpce_utils.managers.uge.status.tqdm"),
+            caplog.at_level("WARNING", logger="hpce_utils.managers.uge.status"),
+        ):
+            status.follow_progress(username="username", job_ids=["12345678"], update_interval=0.1)
 
         assert mock_subprocess.call_count == 9
 
@@ -219,11 +219,13 @@ def test_follow_progress_with_initial_qstat_failures(caplog):
     # Patch subprocess.run in the correct module
     with patch("hpce_utils.shell.subprocess.run", side_effect=side_effects) as mock_subprocess:
         # Patch tqdm to avoid actual progress bars in test output
-        with patch("hpce_utils.managers.uge.status.tqdm"):
-            with caplog.at_level("WARNING", logger="hpce_utils.managers.uge.status"):
-                status.follow_progress(
-                    username="username", job_ids=["12345678"], update_interval=0.1, exit_after=5
-                )
+        with (
+            patch("hpce_utils.managers.uge.status.tqdm"),
+            caplog.at_level("WARNING", logger="hpce_utils.managers.uge.status"),
+        ):
+            status.follow_progress(
+                username="username", job_ids=["12345678"], update_interval=0.1, exit_after=5
+            )
 
         assert mock_subprocess.call_count == 11
 
