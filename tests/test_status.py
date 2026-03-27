@@ -4,7 +4,6 @@ from subprocess import CalledProcessError as CPError
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from hpce_utils.managers.uge import status, submitting
 
 pytest.skip(allow_module_level=True)

@@ -1,7 +1,6 @@
 import subprocess
 
 import pytest
-
 from hpce_utils import shell
 
 

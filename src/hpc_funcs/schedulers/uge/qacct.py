@@ -1,14 +1,12 @@
 import logging
 import subprocess
-from typing import Dict, List
 
 logger = logging.getLogger(__name__)
 
 COL_SPLIT = 13
 
 
-def get_job_accounting(job_id: str) -> List[Dict[str, str]]:
-
+def get_job_accounting(job_id: str) -> list[dict[str, str]]:
     cmd = f"qacct -j {job_id}"
 
     process = subprocess.run(
@@ -29,13 +27,13 @@ def get_job_accounting(job_id: str) -> List[Dict[str, str]]:
     return data
 
 
-def parse_qacct(stdout: str) -> List[Dict[str, str]]:
+def parse_qacct(stdout: str) -> list[dict[str, str]]:
     """
     Output is column-length based and sections split by "=".
     Returns list key-value dict per section.
     """
 
-    output: List[Dict[str, str]] = [dict()]
+    output: list[dict[str, str]] = [dict()]
 
     lines = stdout.split("\n")
 

@@ -32,7 +32,7 @@ def is_job() -> bool:
     return True
 
 
-def get_env() -> Dict[str, Optional[str]]:
+def get_env() -> dict[str, str | None]:
     """
     Get all UGE related environmental variables.
 
@@ -69,7 +69,7 @@ def get_tmpdir() -> Path:
     return path
 
 
-def get_config() -> Dict[str, Any]:
+def get_config() -> dict[str, Any]:
     """Get UGE configuration
 
     - Number of cores available on node
@@ -151,7 +151,6 @@ def source(bashfile):
     variables = dict()
 
     for line in lines:
-
         line = line.split("=")
 
         # Ignore wrong lines

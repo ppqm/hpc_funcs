@@ -13,8 +13,7 @@ ENVIRON_CORES = [
 
 
 def get_available_cores() -> int:
-
-    n_cores: Optional[int]
+    n_cores: int | None
 
     n_cores = get_threads()
 
@@ -26,7 +25,7 @@ def get_available_cores() -> int:
     return n_cores
 
 
-def get_threads() -> Optional[int]:
+def get_threads() -> int | None:
     """Get number of threads from environmental variables"""
 
     n_cores = None
@@ -65,7 +64,7 @@ def set_threads(n_cores: int) -> None:
         os.environ[name] = n_cores_
 
 
-def get_shm_path() -> Optional[Path]:
+def get_shm_path() -> Path | None:
     """
     Get shared memory path for current node.
 
@@ -106,7 +105,7 @@ def is_notebook() -> bool:
         return False  # Probably standard Python interpreter
 
 
-def get_environment(env_names: List[str]) -> Dict[str, str]:
+def get_environment(env_names: list[str]) -> dict[str, str]:
     """Get environ variables that matter"""
     environ = dict()
 

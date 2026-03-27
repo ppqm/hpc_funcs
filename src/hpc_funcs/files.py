@@ -1,7 +1,7 @@
 import tempfile
 import weakref
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any
 
 FILENAMES = tempfile._get_candidate_names()  # type: ignore
 
@@ -16,9 +16,9 @@ class WorkDir(tempfile.TemporaryDirectory):
 
     def __init__(
         self,
-        suffix: Optional[str] = None,
-        prefix: Optional[str] = None,
-        dir: Optional[Union[str, Path]] = None,
+        suffix: str | None = None,
+        prefix: str | None = None,
+        dir: str | Path | None = None,
         keep: bool = False,
     ) -> None:
         self.keep_directory = keep
@@ -28,7 +28,7 @@ class WorkDir(tempfile.TemporaryDirectory):
                 self,
                 super()._cleanup,  # type: ignore
                 self.name,
-                warn_message="Implicitly cleaning up {!r}".format(self),
+                warn_message=f"Implicitly cleaning up {self!r}",
             )
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:

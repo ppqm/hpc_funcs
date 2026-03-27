@@ -131,7 +131,6 @@ def test_taskarray(global_tmp_path: Path):
 
     # Parse output
     for _, lines in stdout.items():
-
         for line in lines:
             if not line.strip():
                 continue

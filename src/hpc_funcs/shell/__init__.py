@@ -3,13 +3,14 @@ import os
 import shutil
 import subprocess
 import time
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Iterator, Optional, Tuple, Union
+from typing import Optional, Tuple, Union
 
 logger = logging.getLogger(__name__)
 
 
-def which(cmd: Union[Path, str]) -> Optional[Path]:
+def which(cmd: Path | str) -> Path | None:
     """Check if command exists in environment"""
     path_ = shutil.which(cmd)
 
@@ -21,7 +22,7 @@ def which(cmd: Union[Path, str]) -> Optional[Path]:
     return path
 
 
-def switch_workdir(path: Optional[Path]) -> bool:
+def switch_workdir(path: Path | None) -> bool:
     """Check if it makes sense to change directory"""
 
     if path is None:
@@ -97,7 +98,7 @@ class StreamResult:
         self._process.terminate()
 
 
-def stream(cmd: str, cwd: Optional[Path] = None, shell: bool = True) -> StreamResult:
+def stream(cmd: str, cwd: Path | None = None, shell: bool = True) -> StreamResult:
     """Execute command in directory, and stream stdout.
 
     Returns a StreamResult object that can be iterated to get stdout lines.
@@ -133,11 +134,11 @@ def stream(cmd: str, cwd: Optional[Path] = None, shell: bool = True) -> StreamRe
 
 def execute(
     cmd: str,
-    cwd: Optional[Path] = None,
+    cwd: Path | None = None,
     shell: bool = True,
     timeout: None = None,
     check: bool = True,
-) -> Tuple[str, str]:
+) -> tuple[str, str]:
     """Execute command in directory, and return stdout and stderr
 
     :param cmd: The shell command
@@ -192,12 +193,12 @@ def execute(
 
 def execute_with_retry(
     cmd: str,
-    cwd: Optional[Path] = None,
+    cwd: Path | None = None,
     shell: bool = True,
     timeout: None = None,
     max_retries: int = 3,
     update_interval: int = 5,
-) -> Tuple[str, str]:
+) -> tuple[str, str]:
     """Execute command in directory, and return stdout and stderr
 
     :param cmd: The shell command
