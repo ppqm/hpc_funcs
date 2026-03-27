@@ -5,7 +5,9 @@ from conftest import RESOURCES
 
 from hpc_funcs import lmod
 
-if not lmod.get_lmod_executable():
+try:
+    lmod.get_lmod_executable()
+except RuntimeError:
     pytest.skip("Could not find LMOD executable", allow_module_level=True)
 
 
