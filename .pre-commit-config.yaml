@@ -34,7 +34,7 @@ repos:
         name: Static type checking
         entry: ty check
         files: ^src/.*\.py$
-        language: python
+        language: system
 
       - id: jupyisort
         name: Sorts ipynb imports
