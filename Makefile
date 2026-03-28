@@ -25,12 +25,6 @@ env_uv:
 	uv pip install -e .[dev] --python ${env}/bin/python
 	${python} -m pre_commit install
 
-env_conda:
-	conda env create -f ./environment.yml -p ${env} --quiet
-	${python} -m pre_commit install
-	${python} -m pip install -e .
-
-
 ## Development
 
 update-format:
