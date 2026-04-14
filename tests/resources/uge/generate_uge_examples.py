@@ -5,7 +5,7 @@ from hpc_funcs.schedulers.uge.constants import TASK_ENVIRONMENT_VARIABLE
 from hpc_funcs.schedulers.uge.monitoring import wait_for_jobs
 from hpc_funcs.schedulers.uge.qdel import delete_job
 from hpc_funcs.schedulers.uge.qsub import submit_script, write_script
-from hpc_funcs.schedulers.uge.submission import JobScript
+from hpc_funcs.schedulers.uge.submission import generate_script
 from hpc_funcs.shell import execute
 
 
@@ -17,7 +17,7 @@ def generate_taskarray_log(global_tmp_path: Path):
     command = f'set -e; sleep 1; if test "{TASK_ENVIRONMENT_VARIABLE}" == 2; then command_does_not_exist; else pwd; fi'
     log_dir = _tmp_path / "uge_testlogs"
 
-    job_script = JobScript(
+    script: str = generate_script(
         cmd=command,
         cores=1,
         cwd=_tmp_path,
@@ -25,8 +25,6 @@ def generate_taskarray_log(global_tmp_path: Path):
         name="TestJob",
         task_concurrent=1,
         task_stop=2,
-    )
-    script: str = job_script.generate_script(
         generate_dirs=True,
     )
 
@@ -55,7 +53,7 @@ def generate_errorjob_log(global_tmp_path: Path):
     command = f'set -e; sleep 1; if test "{TASK_ENVIRONMENT_VARIABLE}" == 2; then command_does_not_exist; else pwd; fi'
     log_dir = Path("/log/dir/does/not/exist")
 
-    job_script = JobScript(
+    script: str = generate_script(
         cmd=command,
         cores=1,
         cwd=_tmp_path,
@@ -63,11 +61,8 @@ def generate_errorjob_log(global_tmp_path: Path):
         name="TestJob",
         task_concurrent=1,
         task_stop=2,
-    )
-    script: str = job_script.generate_script(
         generate_dirs=False,
     )
-
     script_path = write_script(script, directory=_tmp_path)
     job_id = submit_script(script_path)
 
