@@ -86,7 +86,7 @@ set-version:
 commit-tag-version:
 	@# git tag --list | grep -qix "${VERSION}"
 	git commit -m "Version ${VERSION}" --no-verify ${version_file1}
-	git tag '${package}-${VERSION}'
+	git tag 'v${VERSION}'
 
 ## Github
 
