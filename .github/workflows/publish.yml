@@ -23,13 +23,13 @@ jobs:
           pip install build twine
 
       - name: Build package
-        run: make build
+        run: make build python=python
 
       - name: Check distribution
-        run: make test-dist
+        run: make test-dist python=python
 
       - name: Publish to PyPI
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-        run: make upload
+        run: make upload python=python
